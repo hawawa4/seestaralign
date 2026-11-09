@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Seestar Polar Align</title>
+<style>
+:root {
+  --bg: #000;
+  --panel: #120404;
+  --line: #3a0d0d;
+  --text: #ff4a3a;
+  --dim: #a02a20;
+  --faint: #5c1812;
+  --good: #ff7a5c;
+  --ok: #ff4a3a;
+  --bad: #e2301f;
+  --accent: #ff4a3a;
+  --btn-text: #000;
+  --radius: 14px;
+}
+:root[data-theme="dark"] {
+  --bg: #0d1014;
+  --panel: #161b22;
+  --line: #2a313b;
+  --text: #e6edf3;
+  --dim: #9aa6b2;
+  --faint: #4a5560;
+  --good: #3fb950;
+  --ok: #d29922;
+  --bad: #f85149;
+  --accent: #58a6ff;
+  --btn-text: #0d1014;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body {
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding: 0 16px calc(24px + env(safe-area-inset-bottom));
+  max-width: 980px; margin: 0 auto;
+  -webkit-tap-highlight-color: transparent;
+}
+header {
+  display: flex; align-items: center; gap: 10px; padding: 14px 0 10px;
+  position: sticky; top: 0; background: var(--bg); z-index: 5;
+}
+header h1 { font-size: 17px; margin: 0; font-weight: 650; letter-spacing: .2px; flex: 1; }
+.pill { font-size: 12px; padding: 3px 9px; border-radius: 99px; border: 1px solid var(--line); color: var(--dim); white-space: nowrap; }
+.pill.live { color: var(--text); border-color: var(--text); }
+.iconbtn { background: none; border: 1px solid var(--line); color: var(--dim); border-radius: 10px; padding: 5px 9px; font: inherit; font-size: 13px; cursor: pointer; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; margin: 0 0 12px; }
+.grid { display: grid; gap: 12px; }
+@media (min-width: 820px) { .grid.two { grid-template-columns: 1.15fr 1fr; align-items: start; } }
+label { display: block; font-size: 12px; color: var(--dim); margin-bottom: 4px; }
+input, select {
+  width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--line);
+  border-radius: 10px; padding: 9px 10px; font: inherit; min-width: 0;
+}
+input:focus, select:focus { outline: 2px solid var(--faint); border-color: var(--dim); }
+input[type=checkbox] { width: auto; accent-color: var(--accent); }
+.row { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+.row > .grow { flex: 1 1 160px; }
+.row > .port { flex: 0 1 90px; }
+button.btn {
+  background: var(--accent); color: var(--btn-text); border: 0; border-radius: 10px;
+  padding: 10px 16px; font: inherit; font-weight: 650; cursor: pointer; white-space: nowrap;
+}
+button.btn.secondary { background: none; color: var(--text); border: 1px solid var(--line); font-weight: 500; }
+button.btn.big { width: 100%; padding: 15px; font-size: 17px; }
+button:disabled { opacity: .4; cursor: default; }
+.muted { color: var(--dim); }
+.small { font-size: 12.5px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 13.5px; margin-top: 10px; }
+.kv dt { color: var(--dim); } .kv dd { margin: 0; overflow-wrap: anywhere; }
+.warn { border: 1px solid var(--ok); color: var(--text); border-radius: 10px; padding: 8px 10px; margin-top: 10px; font-size: 13.5px; }
+.chk { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--text); margin: 0; }
+
+/* result */
+.steps { display: flex; gap: 6px; margin-bottom: 10px; }
+.steps span { flex: 1; text-align: center; font-size: 12px; padding: 5px 0; border-radius: 8px; border: 1px solid var(--line); color: var(--faint); }
+.steps span.done { color: var(--dim); border-color: var(--dim); }
+.steps span.now { color: var(--btn-text); background: var(--accent); border-color: var(--accent); }
+.stepmsg { font-size: 13.5px; color: var(--dim); min-height: 20px; margin-bottom: 8px; }
+.total { text-align: center; margin: 6px 0 2px; }
+.total .num { font-size: clamp(44px, 13vw, 68px); font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+.total .lbl { font-size: 12px; color: var(--dim); margin-top: 4px; }
+.axes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 6px; }
+.axis { border: 1px solid var(--line); border-radius: 12px; padding: 10px; text-align: center; }
+.axis .t { font-size: 12px; color: var(--dim); }
+.axis .v { font-size: 26px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.axis .d { font-size: 14px; }
+.axis .arrow { font-size: 26px; line-height: 1; display: block; margin: 2px 0; }
+.good { color: var(--good); } .okc { color: var(--ok); } .badc { color: var(--bad); }
+.viz { display: grid; grid-template-columns: minmax(0, 220px) 1fr; gap: 12px; align-items: center; margin-top: 8px; }
+@media (max-width: 420px) { .viz { grid-template-columns: 1fr; } .viz svg.bull { max-width: 260px; margin: 0 auto; } }
+svg { display: block; width: 100%; height: auto; }
+svg text { fill: var(--dim); font: 10px system-ui, sans-serif; }
+.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.knobs { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 10px; }
+.knobs .row button { flex: 1; }
+
+/* frame */
+.frame { position: relative; background: #000; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); min-height: 120px; display: grid; place-items: center; }
+.frame img { width: 100%; max-height: 72vh; object-fit: contain; display: block; }
+:root:not([data-theme="dark"]) .frame img { filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(.85); }
+.frame .empty { color: var(--faint); font-size: 13px; padding: 30px; }
+.badge { position: absolute; left: 8px; top: 8px; background: rgba(0,0,0,.65); color: var(--text); font-size: 12px; padding: 3px 8px; border-radius: 8px; }
+
+details > summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; }
+details > summary::after { content: "▸"; color: var(--dim); }
+details[open] > summary::after { content: "▾"; }
+.form { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
+.form .full { grid-column: 1 / -1; }
+.hint { font-size: 11.5px; color: var(--faint); margin-top: 3px; }
+.log { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; max-height: 260px; overflow: auto; margin-top: 10px; }
+.log div { white-space: pre-wrap; overflow-wrap: anywhere; }
+.log .warn-l { color: var(--ok); } .log .error-l { color: var(--bad); font-weight: 600; }
+.found button { margin: 6px 6px 0 0; }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--bad); color: var(--text); padding: 10px 14px; border-radius: 12px; max-width: calc(100% - 32px); font-size: 14px; display: none; z-index: 10; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Seestar Polar Align</h1>
+  <span class="pill" id="phase">offline</span>
+  <button class="iconbtn" id="theme" title="Toggle red night mode">☾ Night</button>
+</header>
+
+<div class="grid two">
+<div>
+  <section class="card" id="result">
+    <div class="steps" id="steps"><span>Point 1</span><span>Point 2</span><span>Point 3</span><span>Adjust</span></div>
+    <div class="stepmsg" id="stepmsg">Connect to your Seestar to begin.</div>
+    <div class="total"><div class="num" id="total">–</div><div class="lbl" id="totallbl">total polar error</div></div>
+    <div class="axes">
+      <div class="axis"><div class="t">Altitude</div><span class="arrow" id="altArrow">·</span><div class="v" id="altVal">–</div><div class="d" id="altDir">&nbsp;</div></div>
+      <div class="axis"><div class="t">Azimuth</div><span class="arrow" id="azArrow">·</span><div class="v" id="azVal">–</div><div class="d" id="azDir">&nbsp;</div></div>
+    </div>
+    <div class="viz">
+      <svg class="bull" id="bull" viewBox="0 0 220 220" aria-label="Mount axis relative to the pole"></svg>
+      <div>
+        <div class="small muted" id="initial">&nbsp;</div>
+        <svg id="spark" viewBox="0 0 300 90" preserveAspectRatio="none" aria-label="Error history"></svg>
+        <div class="small muted" id="adjinfo">&nbsp;</div>
+      </div>
+    </div>
+    <div id="adjwarn"></div>
+    <div class="controls">
+      <button class="btn big" id="start" disabled>Start</button>
+      <button class="btn big secondary" id="stop" disabled>Stop</button>
+    </div>
+    <div class="knobs" id="knobs" hidden>
+      <div class="small muted" style="margin-bottom:6px">Simulator knobs</div>
+      <div class="row" style="margin-bottom:6px">
+        <button class="btn secondary" data-knob="alt" data-v="5">Alt +5′</button>
+        <button class="btn secondary" data-knob="alt" data-v="1">+1′</button>
+        <button class="btn secondary" data-knob="alt" data-v="-1">−1′</button>
+        <button class="btn secondary" data-knob="alt" data-v="-5">−5′</button>
+      </div>
+      <div class="row">
+        <button class="btn secondary" data-knob="az" data-v="-5">Az W 5′</button>
+        <button class="btn secondary" data-knob="az" data-v="-1">W 1′</button>
+        <button class="btn secondary" data-knob="az" data-v="1">E 1′</button>
+        <button class="btn secondary" data-knob="az" data-v="5">E 5′</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="frame" id="frame"><div class="empty">No frame yet</div></div>
+    <div class="small muted" id="frameinfo" style="margin-top:8px">&nbsp;</div>
+  </section>
+</div>
+
+<div>
+  <section class="card" id="connect">
+    <div class="row">
+      <div class="grow"><label for="host">Seestar address</label><input id="host" autocomplete="off" spellcheck="false" placeholder="seestar.local" data-set="host"></div>
+      <div class="port"><label for="port">Port</label><input id="port" inputmode="numeric" placeholder="auto" data-set="port" data-type="int0"></div>
+      <button class="btn" id="connectBtn">Connect</button>
+    </div>
+    <div class="row" style="margin-top:10px; justify-content: space-between; align-items:center">
+      <label class="chk"><input type="checkbox" data-set="simulate"> Simulator</label>
+      <button class="iconbtn" id="scan">Scan network</button>
+    </div>
+    <div class="found" id="found"></div>
+    <dl class="kv" id="devinfo" hidden></dl>
+    <div class="row" id="modelrow" style="margin-top:10px" hidden>
+      <div class="grow"><label for="model">Model</label><select id="model" data-set="model"></select></div>
+    </div>
+    <div id="warnings"></div>
+  </section>
+
+  <section class="card">
+    <details id="settingsBox">
+      <summary>Settings</summary>
+      <div class="form">
+        <div><label>Exposure (s)</label><input data-set="exposure_s" data-type="num" inputmode="decimal"></div>
+        <div><label>Gain</label><input data-set="gain" data-type="intnull" inputmode="numeric" placeholder="leave"></div>
+        <div><label>Move per step (°)</label><input data-set="move_deg" data-type="num" inputmode="decimal"><div class="hint">Bigger = more accurate. 20° recommended.</div></div>
+        <div><label>Move rate (°/s)</label><input data-set="move_rate" data-type="num" inputmode="decimal"></div>
+        <div><label>Direction</label><select data-set="direction"><option value="east">East</option><option value="west">West</option></select></div>
+        <div><label>Settle (s)</label><input data-set="settle_s" data-type="num" inputmode="decimal"></div>
+        <div><label>Search radius (°)</label><input data-set="search_radius_deg" data-type="num" inputmode="decimal"></div>
+        <div><label>Latitude override</label><input data-set="lat" data-type="numnull" inputmode="decimal" placeholder="from mount"></div>
+        <div><label>Longitude override</label><input data-set="lon" data-type="numnull" inputmode="decimal" placeholder="from mount"></div>
+        <div class="full"><label class="chk"><input type="checkbox" data-set="refraction"> Correct for refraction (align to the apparent pole)</label></div>
+        <div><label>Pressure (hPa)</label><input data-set="pressure_hpa" data-type="num" inputmode="decimal"></div>
+        <div><label>Temperature (°C)</label><input data-set="temp_c" data-type="num" inputmode="decimal"></div>
+        <div class="full"><label class="chk"><input type="checkbox" data-set="sync_clock"> Sync the Seestar clock on connect</label></div>
+        <div class="full"><label>ASTAP binary</label><input data-set="astap_path" placeholder="auto (astap_cli)" spellcheck="false"><div class="hint" id="astapinfo"></div></div>
+        <div><label>Star database</label><input data-set="astap_database" placeholder="auto (e.g. d50)" spellcheck="false"></div>
+        <div><label>Database folder</label><input data-set="astap_database_dir" placeholder="auto" spellcheck="false"></div>
+        <div class="full small muted" style="margin-top:4px">Simulator</div>
+        <div><label>Sim latitude</label><input data-set="sim_lat" data-type="num" inputmode="decimal"></div>
+        <div><label>Sim longitude</label><input data-set="sim_lon" data-type="num" inputmode="decimal"></div>
+        <div><label>Sim alt error (°)</label><input data-set="sim_alt_err_deg" data-type="num" inputmode="decimal"></div>
+        <div><label>Sim az error (°)</label><input data-set="sim_az_err_deg" data-type="num" inputmode="decimal"></div>
+      </div>
+    </details>
+  </section>
+
+  <section class="card">
+    <details id="logBox">
+      <summary>Log</summary>
+      <div class="log" id="log"></div>
+    </details>
+  </section>
+</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+let S = null;            // latest state
+let lastFrameId = -1;
+
+// ---------- theme ----------
+function applyTheme(t) {
+  if (t === "dark") document.documentElement.dataset.theme = "dark";
+  else delete document.documentElement.dataset.theme;
+  $("theme").textContent = t === "dark" ? "☀ Dark" : "☾ Night";
+}
+let theme = "night";
+try { theme = localStorage.getItem("theme") || "night"; } catch (e) {}
+applyTheme(theme);
+$("theme").onclick = () => {
+  theme = theme === "dark" ? "night" : "dark";
+  try { localStorage.setItem("theme", theme); } catch (e) {}
+  applyTheme(theme);
+};
+
+// ---------- helpers ----------
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.style.display = "block";
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.style.display = "none", 6000);
+}
+async function api(method, path, body) {
+  const r = await fetch(path, { method, headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
+  let j = {}; try { j = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+function fmtAngle(deg) {
+  if (deg == null || isNaN(deg)) return "–";
+  const a = Math.abs(deg);
+  if (a < 1 / 60) return `${Math.round(a * 3600)}″`;
+  if (a < 1) { let m = Math.floor(a * 60), s = Math.round((a * 60 - m) * 60); if (s === 60) { m++; s = 0; } return `${m}′ ${String(s).padStart(2, "0")}″`; }
+  let d = Math.floor(a), m = Math.round((a - d) * 60); if (m === 60) { d++; m = 0; } return `${d}° ${String(m).padStart(2, "0")}′`;
+}
+function grade(deg) { const m = Math.abs(deg) * 60; return m < 1 ? "good" : m < 5 ? "okc" : "badc"; }
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// ---------- settings form ----------
+function readField(el) {
+  const t = el.dataset.type;
+  if (el.type === "checkbox") return el.checked;
+  const v = el.value.trim();
+  if (t === "num") return v === "" ? undefined : Number(v);
+  if (t === "numnull") return v === "" ? null : Number(v);
+  if (t === "intnull") return v === "" ? null : parseInt(v, 10);
+  if (t === "int0") return v === "" ? 0 : parseInt(v, 10);
+  return v;
+}
+let pending = {}, saveTimer = null;
+function queueSave(key, val) {
+  if (val === undefined || (typeof val === "number" && isNaN(val))) return;
+  pending[key] = val;
+  if (key === "lat" || key === "lon") { // must travel together
+    pending.lat = readField(document.querySelector('[data-set="lat"]'));
+    pending.lon = readField(document.querySelector('[data-set="lon"]'));
+  }
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    const p = pending; pending = {};
+    try { await api("PUT", "/api/settings", p); } catch (e) { toast(e.message); }
+  }, 350);
+}
+document.querySelectorAll("[data-set]").forEach((el) => {
+  const ev = el.type === "checkbox" || el.tagName === "SELECT" ? "change" : "input";
+  el.addEventListener(ev, () => queueSave(el.dataset.set, readField(el)));
+});
+function fillSettings(set) {
+  document.querySelectorAll("[data-set]").forEach((el) => {
+    if (document.activeElement === el || el.dataset.set in pending) return;
+    const v = set[el.dataset.set];
+    if (el.type === "checkbox") el.checked = !!v;
+    else if (el.dataset.type === "int0") el.value = v ? v : "";
+    else el.value = v == null ? "" : v;
+  });
+}
+
+// ---------- actions ----------
+$("connectBtn").onclick = async () => {
+  const connected = S && S.phase !== "disconnected";
+  $("connectBtn").disabled = true;
+  try {
+    clearTimeout(saveTimer);
+    const p = { ...pending, host: readField($("host")), port: readField($("port")) }; pending = {};
+    await api("PUT", "/api/settings", p);
+    await api("POST", connected ? "/api/disconnect" : "/api/connect");
+  } catch (e) { toast(e.message); }
+  $("connectBtn").disabled = false;
+};
+$("start").onclick = async () => { try { await api("POST", "/api/start"); } catch (e) { toast(e.message); } };
+$("stop").onclick = async () => { try { await api("POST", "/api/stop"); } catch (e) { toast(e.message); } };
+$("scan").onclick = async () => {
+  $("found").innerHTML = '<span class="small muted">Scanning…</span>';
+  try {
+    const list = await api("GET", "/api/discover");
+    $("found").innerHTML = list.length ? list.map((f) => `<button class="iconbtn" data-ip="${esc(f.ip)}" data-port="${f.port}">${esc(f.ip)}:${f.port}</button>`).join("")
+      : '<span class="small muted">No Alpaca devices answered. Is Alpaca enabled in the Seestar app?</span>';
+    $("found").querySelectorAll("button").forEach((b) => b.onclick = () => {
+      $("host").value = b.dataset.ip; $("port").value = b.dataset.port;
+      queueSave("host", b.dataset.ip); queueSave("port", Number(b.dataset.port));
+    });
+  } catch (e) { $("found").innerHTML = ""; toast(e.message); }
+};
+document.querySelectorAll("[data-knob]").forEach((b) => b.onclick = async () => {
+  const v = Number(b.dataset.v);
+  try { await api("POST", "/api/sim/knob", b.dataset.knob === "alt" ? { alt: v, az: 0 } : { alt: 0, az: v }); } catch (e) { toast(e.message); }
+});
+
+// ---------- rendering ----------
+const PHASES = { disconnected: "offline", connecting: "connecting…", ready: "connected", measuring: "measuring", adjusting: "adjusting" };
+
+function render(st) {
+  S = st;
+  const ph = st.phase;
+  $("phase").textContent = PHASES[ph] || ph;
+  $("phase").classList.toggle("live", ph === "measuring" || ph === "adjusting");
+  fillSettings(st.settings);
+
+  // connection card
+  const connected = ph !== "disconnected" && ph !== "connecting";
+  $("connectBtn").textContent = ph === "connecting" ? "Connecting…" : connected ? "Disconnect" : "Connect";
+  $("connectBtn").disabled = ph === "connecting";
+  $("host").disabled = $("port").disabled = connected;
+  const rig = st.rig;
+  $("devinfo").hidden = !rig;
+  $("modelrow").hidden = !rig;
+  if (rig) {
+    const site = st.site ? `${st.site.lat.toFixed(4)}°, ${st.site.lon.toFixed(4)}° <span class="muted">(${st.site.source})</span>` : '<span class="badc">unknown – set it in Settings</span>';
+    const modes = { 0: "Alt-Az", 1: "Polar (EQ)", 2: "German polar" };
+    $("devinfo").innerHTML =
+      `<dt>Server</dt><dd>${esc(rig.base_url)}</dd>` +
+      `<dt>Camera</dt><dd>${esc(rig.camera.name || "#" + rig.camera.number)}${rig.sensor_w ? ` <span class="muted">${rig.sensor_w}×${rig.sensor_h}</span>` : ""}</dd>` +
+      `<dt>Mount</dt><dd>${esc(rig.telescope.name || "#" + rig.telescope.number)}${rig.alignment_mode >= 0 ? ` <span class="muted">${modes[rig.alignment_mode] || ""}</span>` : ""}</dd>` +
+      `<dt>Site</dt><dd>${site}</dd>`;
+    const sel = $("model");
+    if (sel.options.length !== st.models.length + 1) {
+      sel.innerHTML = '<option value="">Auto</option>' + st.models.map((m) => `<option value="${m.key}">${esc(m.name)}</option>`).join("");
+    }
+    if (document.activeElement !== sel) sel.value = st.settings.model || "";
+    sel.options[0].textContent = st.model && !st.settings.model ? `Auto (${st.model.name}, ${st.model_source})` : "Auto";
+  }
+  $("warnings").innerHTML = (st.warnings || []).map((w) => `<div class="warn">${esc(w)}</div>`).join("");
+  const ast = st.astap;
+  $("astapinfo").textContent = st.settings.simulate ? "Simulator doesn't use ASTAP." :
+    ast.path ? `Using ${ast.path}${ast.databases && ast.databases.length ? " · databases: " + ast.databases.join(", ") : " · no star database detected"}` : "ASTAP not found – install astap_cli";
+
+  // steps
+  const nPts = (st.points || []).length;
+  const stepEls = $("steps").children;
+  for (let i = 0; i < 4; i++) {
+    const done = i < 3 ? nPts > i : false;
+    const now = ph === "measuring" ? i === nPts : ph === "adjusting" ? i === 3 : false;
+    stepEls[i].className = now ? "now" : done ? "done" : "";
+  }
+  $("stepmsg").textContent = st.step || (ph === "ready" ? "Ready. Point roughly at the meridian, 30–60° up, away from the pole, then Start." :
+    ph === "disconnected" ? "Connect to your Seestar to begin." : "");
+  $("start").disabled = ph !== "ready";
+  $("stop").disabled = !(ph === "measuring" || ph === "adjusting");
+  $("start").textContent = st.initial && ph === "ready" ? "Restart" : "Start";
+
+  // result
+  const e = st.error;
+  if (e) {
+    $("total").textContent = fmtAngle(e.total_deg);
+    $("total").className = "num " + grade(e.total_deg);
+    $("totallbl").textContent = ph === "adjusting" ? "total polar error · live" : "total polar error";
+    $("altVal").textContent = fmtAngle(e.alt_deg);
+    $("altVal").className = "v " + grade(e.alt_deg);
+    $("altArrow").textContent = Math.abs(e.alt_deg) * 60 < 0.25 ? "✓" : e.alt_direction === "raise" ? "▲" : "▼";
+    $("altDir").textContent = Math.abs(e.alt_deg) * 60 < 0.25 ? "on target" : e.alt_direction === "raise" ? "Raise the axis" : "Lower the axis";
+    $("azVal").textContent = fmtAngle(e.az_deg);
+    $("azVal").className = "v " + grade(e.az_deg);
+    const azOk = Math.abs(e.az_deg) * 60 < 0.25;
+    $("azArrow").textContent = azOk ? "✓" : e.az_hand === "left" ? "◀" : "▶";
+    $("azDir").textContent = azOk ? "on target" : `Move ${e.az_direction} (${e.az_hand})`;
+  } else {
+    $("total").textContent = "–"; $("total").className = "num";
+    for (const id of ["altVal", "azVal"]) { $(id).textContent = "–"; $(id).className = "v"; }
+    $("altArrow").textContent = $("azArrow").textContent = "·";
+    $("altDir").innerHTML = $("azDir").innerHTML = "&nbsp;";
+    $("totallbl").textContent = "total polar error";
+  }
+  $("initial").textContent = st.initial ? `Initial: ${fmtAngle(st.initial.total_deg)} (alt ${fmtAngle(st.initial.alt_deg)}, az ${fmtAngle(st.initial.az_deg)})` : " ";
+  const a = st.adjust;
+  $("adjinfo").textContent = a && a.frames ? `${a.frames} frame${a.frames === 1 ? "" : "s"} · turned alt ${fmtAngle(a.beta_deg)}, az ${fmtAngle(a.alpha_deg)}` : " ";
+  $("adjwarn").innerHTML = ((a && a.warnings) || []).map((w) => `<div class="warn">${esc(w)}</div>`).join("");
+  $("knobs").hidden = !(st.rig && st.rig.simulated && ph === "adjusting");
+  drawBull(st);
+  drawSpark(st.history || []);
+
+  // frame
+  const f = st.frame;
+  if (f && f.id !== lastFrameId) {
+    lastFrameId = f.id;
+    const img = new Image();
+    img.onload = () => { $("frame").innerHTML = ""; $("frame").appendChild(img); const b = document.createElement("div"); b.className = "badge"; b.id = "badge"; $("frame").appendChild(b); updateBadge(f); };
+    img.src = "/api/frame.jpg?id=" + f.id;
+  }
+  if (f) updateBadge(f);
+  $("frameinfo").textContent = f ? (f.solved ? `RA ${(f.ra_deg / 15).toFixed(4)}h · Dec ${f.dec_deg.toFixed(4)}° · ${f.scale_arcsec ? f.scale_arcsec.toFixed(2) + "″/px · " : ""}solved in ${f.solve_s.toFixed(1)} s` : f.solving ? "Plate solving…" : f.error ? "Solve failed: " + f.error : "") : " ";
+
+  // log
+  const log = $("log");
+  const atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight - 4;
+  log.innerHTML = (st.log || []).map((l) => `<div class="${l.level}-l">${new Date(l.t).toLocaleTimeString()}  ${esc(l.msg)}</div>`).join("");
+  if (atBottom) log.scrollTop = log.scrollHeight;
+}
+function updateBadge(f) {
+  const b = $("badge"); if (!b) return;
+  b.textContent = f.solving ? "solving…" : f.solved ? "solved" : f.error ? "no solve" : "";
+}
+
+const RINGS = [1, 2, 5, 10, 20, 30, 60, 120, 300, 600]; // arcmin
+function drawBull(st) {
+  const svg = $("bull"), e = st.error, init = st.initial;
+  const c = 110, R = 96;
+  // zoom to the *current* error so the last arcminutes stay visible
+  const maxErr = Math.max(e ? Math.hypot(e.alt_deg, e.az_deg) * 60 : 0, 0.5) * 1.15;
+  const outer = RINGS.find((r) => r >= maxErr) || RINGS[RINGS.length - 1];
+  const sc = R / outer;
+  const north = e ? e.northern : !(st.site && st.site.lat < 0);
+  // facing the pole: north -> east on the right; south -> east on the left
+  const pos = (err) => {
+    let x = (north ? 1 : -1) * err.az_deg * 60 * sc, y = -err.alt_deg * 60 * sc;
+    const r = Math.hypot(x, y), lim = R + 6;
+    if (r > lim) { x *= lim / r; y *= lim / r; } // pin off-scale points to the edge
+    return [c + x, c + y];
+  };
+  let s = "";
+  for (const f of [1, 2 / 3, 1 / 3]) s += `<circle cx="${c}" cy="${c}" r="${R * f}" fill="none" stroke="var(--line)" />`;
+  s += `<line x1="${c - R}" y1="${c}" x2="${c + R}" y2="${c}" stroke="var(--line)"/><line x1="${c}" y1="${c - R}" x2="${c}" y2="${c + R}" stroke="var(--line)"/>`;
+  s += `<circle cx="${c}" cy="${c}" r="${Math.max(1 * sc, 2.5)}" fill="none" stroke="var(--good)" stroke-width="1.5"/>`;
+  s += `<text x="${c + 4}" y="${c - R + 10}">${outer >= 60 ? outer / 60 + "°" : outer + "′"}</text>`;
+  s += `<text x="${c + 4}" y="${c - R / 3 + 10}">${fmtRing(outer / 3)}</text>`;
+  s += `<text x="${north ? c + R - 8 : 6}" y="${c - 4}">E</text><text x="${north ? 6 : c + R - 8}" y="${c - 4}">W</text>`;
+  s += `<text x="${c - 6}" y="12">up</text>`;
+  if (init && e && st.phase === "adjusting") { const [x, y] = pos(init); s += `<circle cx="${x}" cy="${y}" r="4" fill="none" stroke="var(--faint)"/>`; }
+  if (e) {
+    const [x, y] = pos(e);
+    s += `<line x1="${x}" y1="${y}" x2="${c}" y2="${c}" stroke="var(--dim)" stroke-dasharray="3 3"/>`;
+    s += `<circle cx="${x}" cy="${y}" r="6.5" fill="var(--accent)"/>`;
+  }
+  svg.innerHTML = s;
+}
+function fmtRing(m) { return m >= 60 ? +(m / 60).toFixed(1) + "°" : m >= 1 ? +m.toFixed(1) + "′" : Math.round(m * 60) + "″"; }
+function drawSpark(h) {
+  const svg = $("spark");
+  if (h.length < 2) { svg.innerHTML = `<text x="0" y="50">History appears while adjusting</text>`; return; }
+  const W = 300, H = 90, pad = 6;
+  const max = Math.max(...h.map((p) => p.total)) * 60 || 1;
+  const pts = h.map((p, i) => `${(i / (h.length - 1)) * W},${H - pad - (p.total * 60 / max) * (H - 2 * pad)}`).join(" ");
+  const oneMin = H - pad - (1 / max) * (H - 2 * pad);
+  svg.innerHTML = (max > 1 ? `<line x1="0" x2="${W}" y1="${oneMin}" y2="${oneMin}" stroke="var(--good)" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>` : "") +
+    `<polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
+}
+
+// ---------- live state ----------
+function connectEvents() {
+  const es = new EventSource("/api/events");
+  es.onmessage = (m) => { try { render(JSON.parse(m.data)); } catch (e) { console.error(e); } };
+  es.onerror = () => { $("phase").textContent = "server offline"; $("phase").classList.remove("live"); };
+}
+connectEvents();
+</script>
+</body>
+</html>

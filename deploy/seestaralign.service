@@ -1,0 +1,20 @@
+[Unit]
+Description=Seestar polar alignment web UI
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/seestaralign -listen :8080
+# settings.json lives in /var/lib/seestaralign (systemd sets $STATE_DIRECTORY)
+StateDirectory=seestaralign
+DynamicUser=yes
+Restart=on-failure
+RestartSec=2
+# frames are written here for ASTAP
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target

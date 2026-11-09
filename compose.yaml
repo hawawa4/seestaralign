@@ -1,0 +1,17 @@
+services:
+  seestaralign:
+    build:
+      context: .
+      args:
+        ASTAP_DB: d50          # d50 (recommended), d80, d20, d05 or "none"
+    image: seestaralign
+    # Host networking is what makes seestar.local (mDNS) and Alpaca discovery
+    # (UDP broadcast) work: a bridged container can't see the LAN's multicast.
+    network_mode: host
+    command: ["-listen", ":8080"]
+    volumes:
+      - seestaralign-data:/data
+    restart: unless-stopped
+
+volumes:
+  seestaralign-data:
