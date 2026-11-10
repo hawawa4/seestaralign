@@ -29,69 +29,155 @@ runs in both hemispheres.
   *Me → Device Management → Assistive Features → Alpaca*. The Seestar's own Alpaca
   server listens on port **32323**. Note that `seestar_alp` *cannot* be used: it has no
   Camera device and its MoveAxis doesn't move the RA axis.
-- Join the Seestar to your home Wi-Fi (station mode) so the LXC can reach it.
+- Join the Seestar to your home Wi-Fi (station mode) so the machine running seestaralign can reach it.
 - Put it in **EQ mode** on the wedge and roughly polar align it with the app.
 
-## Install (Debian/Ubuntu LXC)
+## Build from source
+
+You need **Go 1.26.3 or newer** (see `go.mod`). There are no third-party modules and no
+cgo, so the result is a single static binary.
 
 ```sh
-# 1. the app
-make linux-amd64                       # or linux-arm64 for a Pi; on your build machine
-scp bin/seestaralign-linux-amd64 root@lxc:/usr/local/bin/seestaralign
-scp deploy/seestaralign.service root@lxc:/etc/systemd/system/
-
-# 2. ASTAP: the *command-line* build plus a star database, from
-#    https://www.hnsky.org/astap.htm (Linux downloads):
-#    - astap_command-line_version_Linux_amd64.zip  -> unzip astap_cli into /opt/astap/
-#    - d50_star_database.deb (or d80)              -> dpkg -i d50_star_database.deb
-#    The GUI "astap" build needs a display and will NOT work in a container.
-
-# 3. start it
-systemctl daemon-reload && systemctl enable --now seestaralign
+git clone https://github.com/hawawa4/seestaralign.git
+cd seestaralign
+make build                 # -> bin/seestaralign (for the machine you're on)
+make linux-amd64           # -> bin/seestaralign-linux-amd64
+make linux-arm64           # -> bin/seestaralign-linux-arm64 (Raspberry Pi, 64-bit OS)
+make test                  # go vet + all tests; no hardware or ASTAP needed
 ```
 
-Then browse to `http://<lxc-ip>:8080`.
-
-## Install with Docker
-
-The image contains the app, the headless `astap_cli` and a star database, and needs
-nothing else:
+Without `make`:
 
 ```sh
-docker compose up -d --build          # then browse to http://<host>:8080
+CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/seestaralign ./cmd/seestaralign
+```
+
+## Run locally
+
+```sh
+make run                   # builds, then serves http://127.0.0.1:8080
+# or
+bin/seestaralign -listen :8080        # reachable from other devices on the LAN
+```
+
+Open the page and tick **Simulator** in the Connect card to try everything without a
+telescope or ASTAP. To align a real Seestar you also need ASTAP:
+
+- Install the **command-line** build, `astap_cli`, and a star database from
+  <https://www.hnsky.org/astap.htm> (Linux downloads):
+  - `astap_command-line_version_Linux_amd64.zip` (or `_aarch64`): unzip `astap_cli`
+    into `/opt/astap/`.
+  - `d50_star_database.deb` (or `d80`): `dpkg -i d50_star_database.deb`.
+- The app looks for `astap_cli` on `$PATH`, then in `/opt/astap/` and `/usr/local/bin/`.
+  Star databases are found in `/opt/astap/`, `/usr/share/astap/data/` or next to the
+  binary. Both can be set explicitly with `astap_path` / `astap_database_dir` in the
+  settings file.
+- The GUI `astap` build needs a display and will **not** work headless.
+
+Flags:
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `-listen` | `:8080` | HTTP listen address. |
+| `-config` | `$SEESTARALIGN_CONFIG`, else `$STATE_DIRECTORY/settings.json`, else the user config dir | Settings JSON file. |
+| `-workdir` | `$TMPDIR/seestaralign` | Where `frame.fits` is written for ASTAP. |
+
+### As a systemd service (Debian/Ubuntu, LXC, Raspberry Pi)
+
+```sh
+make linux-amd64                       # or linux-arm64; on your build machine
+scp bin/seestaralign-linux-amd64 root@host:/usr/local/bin/seestaralign
+scp deploy/seestaralign.service root@host:/etc/systemd/system/
+# install astap_cli + a star database on the host as described above, then:
+ssh root@host 'systemctl daemon-reload && systemctl enable --now seestaralign'
+```
+
+Then browse to `http://<host>:8080`. Settings live in `/var/lib/seestaralign/`.
+
+For an LXC container, give it a bridged NIC on the same LAN as the Seestar, so mDNS
+(`seestar.local`) and Alpaca discovery reach it. The app has its own mDNS lookup, so
+avahi isn't needed. If the name still doesn't resolve, type the Seestar's IP address
+into the UI.
+
+## Run with Docker
+
+The image contains the app, the headless `astap_cli` and the `d50` star database, and
+needs nothing else. It is built for `linux/amd64` and `linux/arm64` (Raspberry Pi 4/5
+with a 64-bit OS).
+
+### Prebuilt image
+
+A GitHub Action ([`.github/workflows/docker.yml`](.github/workflows/docker.yml)) runs
+the tests and publishes the image to GitHub Container Registry on every push to `main`
+and for every `v*` tag:
+
+| Tag | Built from |
+|---|---|
+| `ghcr.io/hawawa4/seestaralign:latest` | the newest `main` or release tag |
+| `ghcr.io/hawawa4/seestaralign:main` | the newest `main` |
+| `ghcr.io/hawawa4/seestaralign:1.2.3`, `:1.2`, `:1` | release tag `v1.2.3` |
+| `ghcr.io/hawawa4/seestaralign:sha-abc1234` | a specific commit |
+
+Example `compose.yaml`:
+
+```yaml
+services:
+  seestaralign:
+    image: ghcr.io/hawawa4/seestaralign:latest
+    container_name: seestaralign
+    # Required: lets seestar.local (mDNS) and Alpaca discovery (UDP broadcast)
+    # reach the LAN. A bridged container can't see the LAN's multicast.
+    network_mode: host
+    command: ["-listen", ":8080"]   # change the port here if 8080 is taken
+    volumes:
+      - seestaralign-data:/data     # settings.json
+    restart: unless-stopped
+
+volumes:
+  seestaralign-data:
+```
+
+```sh
+docker compose up -d       # then browse to http://<host>:8080
+docker compose pull && docker compose up -d   # update to the newest image
 ```
 
 Or without compose:
 
 ```sh
-docker build -t seestaralign .
-docker run -d --name seestaralign --network host -v seestaralign-data:/data \
-  --restart unless-stopped seestaralign
+docker run -d --name seestaralign --network host \
+  -v seestaralign-data:/data --restart unless-stopped \
+  ghcr.io/hawawa4/seestaralign:latest
 ```
 
-- **Host networking (`--network host`) is required.** It is what lets `seestar.local`
-  (mDNS) and Alpaca discovery (UDP broadcast) reach the LAN. With port mapping
-  (`-p 8080:8080`) the app still runs, but you have to enter the Seestar's IP address.
-- **Star database:** chosen at build time with `--build-arg ASTAP_DB=...`.
+### Build the image yourself
 
-  | Value | Download | Notes |
-  |---|---|---|
-  | `d50` (default) | ~860 MB | Recommended for every Seestar. |
-  | `d80` | ~1.25 GB | Denser. |
-  | `d05` | ~97 MB | Small test builds only. Too sparse for reliable S50 solves. |
-  | `none` | – | Mount your own database at `/opt/astap` instead. |
+The [`compose.yaml`](compose.yaml) in this repo builds from source:
 
-- **Platforms:** `linux/amd64` and `linux/arm64` (Raspberry Pi 4/5 with a 64-bit OS).
-  Multi-arch builds work with `docker buildx build --platform linux/arm64 ...`.
+```sh
+docker compose up -d --build
+# or
+docker build -t seestaralign --build-arg ASTAP_DB=d50 .
+docker buildx build --platform linux/arm64 -t seestaralign:arm64 .   # cross-build for a Pi
+```
+
+The star database is chosen at build time with `--build-arg ASTAP_DB=...`:
+
+| Value | Download | Notes |
+|---|---|---|
+| `d50` (default) | ~860 MB | Recommended for every Seestar. |
+| `d80` | ~1.25 GB | Denser. |
+| `d05` | ~97 MB | Small test builds only. Too sparse for reliable S50 solves. |
+| `none` | – | Mount your own database at `/opt/astap` instead. |
+
+### Docker notes
+
+- **Host networking (`--network host`) is required** for `seestar.local` and Alpaca
+  discovery. With port mapping (`-p 8080:8080`) the app still runs, but you have to
+  enter the Seestar's IP address.
 - **Settings** persist in the `/data` volume.
-- **Clock:** the container uses the host clock, so keep the host NTP-synced.
-
-Container notes (both LXC and Docker):
-- **Clock:** the container uses the host's clock. Keep the host NTP-synced, because one
+- **Clock:** the container uses the host clock. Keep the host NTP-synced, because one
   second of clock error is 15″ of sky rotation.
-- **Networking:** use bridged networking, so mDNS (`seestar.local`) and Alpaca discovery
-  reach the Seestar's LAN. The app has its own mDNS lookup, so avahi isn't needed. If
-  the name still doesn't resolve, type the Seestar's IP address into the UI.
 
 ## Using it
 
