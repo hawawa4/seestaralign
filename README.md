@@ -60,8 +60,7 @@ just run                   # builds, then serves http://127.0.0.1:8080
 bin/seestaralign -listen :8080        # reachable from other devices on the LAN
 ```
 
-Open the page and tick **Simulator** in the Connect card to try everything without a
-telescope or ASTAP. To align a real Seestar you also need ASTAP:
+Open the page. To align a Seestar you also need ASTAP:
 
 - Install the **command-line** build, `astap_cli`, and a star database from
   <https://www.hnsky.org/astap.htm> (Linux downloads):
@@ -200,10 +199,6 @@ The star database is chosen at build time with `--build-arg ASTAP_DB=...`:
      real: when the axis is off the meridian, the wedge's altitude pivot also moves
      azimuth slightly.
 
-**Simulator mode** (checkbox in the Connect card) runs everything against a virtual
-Seestar with a known polar error, plus on-screen knob buttons. Use it to try the UI
-indoors.
-
 ### Accuracy
 
 Noise in the 3-point fit falls with the *square* of the move distance. With ~1.4″ of
@@ -238,8 +233,8 @@ plate-solve noise:
 ## Development
 
 ```sh
-just test      # unit, simulator, fake Alpaca server and fake ASTAP tests
-just dev       # go run on http://127.0.0.1:8080 with state in .dev/, tick "Simulator" to play
+just test      # unit, simulated-mount, fake Alpaca server and fake ASTAP tests
+just dev       # go run on http://127.0.0.1:8080 with settings in .dev/
 just run       # build, then run the release binary
 just reference # regenerate astropy reference values (needs uv)
 ```
@@ -249,7 +244,7 @@ Layout:
 - `internal/polar`: axis fit and adjustment tracker
 - `internal/alpaca`: client, discovery, mDNS
 - `internal/solver`: ASTAP wrapper
-- `internal/session`: the routine, the simulator and the state
+- `internal/session`: the routine and the state (the simulated mount used by the tests lives in `sim_test.go`)
 - `internal/web`: HTTP/SSE server and the embedded UI
 
 ### Not yet verified on real hardware

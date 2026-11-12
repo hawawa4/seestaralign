@@ -7,7 +7,7 @@ export CGO_ENABLED := "0"
 default:
     @just --list
 
-# run locally with the simulator available; state lives in .dev/ so your real settings stay untouched
+# run locally with `go run`; settings live in .dev/ so your real ones stay untouched
 dev listen="127.0.0.1:8080":
     mkdir -p .dev
     go run ./cmd/seestaralign -listen {{listen}} -config .dev/settings.json -workdir .dev

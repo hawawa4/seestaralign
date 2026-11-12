@@ -162,8 +162,7 @@ func TestAlpacaPathEndToEnd(t *testing.T) {
 	if err := os.WriteFile(astap, []byte(fakeASTAP), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	set := DefaultSettings()
-	fake := &fakeSeestar{rig: newSimRig(set)}
+	fake := &fakeSeestar{rig: newSimRig(defaultSim)}
 	srv := httptest.NewServer(fake)
 	defer srv.Close()
 

@@ -124,19 +124,6 @@ func Handler(s *session.Session) http.Handler {
 	mux.HandleFunc("POST /api/start", action(func(context.Context) error { return s.Start() }))
 	mux.HandleFunc("POST /api/stop", action(func(context.Context) error { s.Stop(); return nil }))
 
-	mux.HandleFunc("POST /api/sim/knob", func(w http.ResponseWriter, r *http.Request) {
-		var req struct{ Alt, Az float64 }
-		if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&req); err != nil {
-			fail(w, err)
-			return
-		}
-		if err := s.SimKnob(req.Alt, req.Az); err != nil {
-			fail(w, err)
-			return
-		}
-		writeJSON(w, 200, map[string]bool{"ok": true})
-	})
-
 	mux.HandleFunc("GET /api/discover", func(w http.ResponseWriter, r *http.Request) {
 		found, err := alpaca.Discover("255.255.255.255", 1500*time.Millisecond)
 		if err != nil {

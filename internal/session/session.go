@@ -61,12 +61,6 @@ type Settings struct {
 	ASTAPDatabase    string `json:"astap_database"`
 	ASTAPDatabaseDir string `json:"astap_database_dir"`
 	SyncClock        bool   `json:"sync_clock"`
-
-	Simulate     bool    `json:"simulate"`
-	SimLat       float64 `json:"sim_lat"`
-	SimLon       float64 `json:"sim_lon"`
-	SimAltErrDeg float64 `json:"sim_alt_err_deg"`
-	SimAzErrDeg  float64 `json:"sim_az_err_deg"`
 }
 
 func DefaultSettings() Settings {
@@ -75,7 +69,6 @@ func DefaultSettings() Settings {
 		ExposureS: 3, MoveDeg: 20, MoveRate: 3, Direction: "east", SettleS: 2, SearchRadiusDeg: 15,
 		StartMode: "altaz", StartAltDeg: 50, StartAzDeg: 180,
 		Refraction: true, PressureHPa: 1013.25, TempC: 15, SyncClock: true,
-		SimLat: 48.1, SimLon: 11.6, SimAltErrDeg: 0.8, SimAzErrDeg: -1.3,
 	}
 }
 
@@ -374,23 +367,24 @@ func (s *Session) Connect(ctx context.Context) error {
 		s.rig.Close()
 		s.rig = nil
 	}
-	var rig Rig
-	var fs frameSolver
-	if set.Simulate {
-		sr := newSimRig(set)
-		rig, fs = sr, simSolver{sr}
-		s.info("Connected to the simulator (polar error alt %+.2f°, az %+.2f°)", set.SimAltErrDeg, set.SimAzErrDeg)
-	} else {
-		cctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-		ar, err := connectAlpaca(cctx, set, s.info)
-		cancel()
-		if err != nil {
-			s.update(func(st *State) { st.Phase = "disconnected"; st.Rig = nil })
-			s.logf("error", "Connect failed: %v", err)
-			return err
-		}
-		rig, fs = ar, &astapSolver{s: s}
+	cctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	rig, err := connectAlpaca(cctx, set, s.info)
+	cancel()
+	if err != nil {
+		s.update(func(st *State) { st.Phase = "disconnected"; st.Rig = nil })
+		s.logf("error", "Connect failed: %v", err)
+		return err
 	}
+	return s.attach(ctx, rig, &astapSolver{s: s})
+}
+
+// attach checks a freshly connected rig, warns about anything that will
+// get in the way, and makes it the session's rig. Tests use it to plug in
+// a simulated rig.
+func (s *Session) attach(ctx context.Context, rig Rig, fs frameSolver) error {
+	s.mu.Lock()
+	set := s.st.Settings
+	s.mu.Unlock()
 	info := rig.Info()
 
 	var warnings []string
@@ -442,18 +436,6 @@ func (s *Session) Disconnect() {
 	s.mu.Unlock()
 }
 
-// SimKnob turns the simulator's wedge knobs (arcminutes).
-func (s *Session) SimKnob(alt, az float64) error {
-	s.mu.Lock()
-	sr, ok := s.rig.(*simRig)
-	s.mu.Unlock()
-	if !ok {
-		return errors.New("not connected to the simulator")
-	}
-	sr.Knob(alt, az)
-	return nil
-}
-
 // ---------------------------------------------------------------- run
 
 func (s *Session) Start() error {
@@ -468,7 +450,7 @@ func (s *Session) Start() error {
 	if s.st.Model == nil {
 		return errors.New("select your Seestar model")
 	}
-	if _, sim := s.rig.(*simRig); !sim && s.st.ASTAP.Path == "" {
+	if _, ok := s.solver.(*astapSolver); ok && s.st.ASTAP.Path == "" {
 		return errors.New("ASTAP not found - install astap_cli (see README)")
 	}
 	ctx, cancel := context.WithCancel(context.Background())

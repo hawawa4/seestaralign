@@ -26,7 +26,7 @@ type simRig struct {
 	e1       astro.Vec // mount "meridian" reference, perpendicular to axis
 	ha, dec  float64   // mount angles, rad
 	tracking bool
-	rate     float64 // current MoveAxis rate, deg/s
+	rate     float64   // current MoveAxis rate, deg/s
 	slewEnd  time.Time // a SlewTo "finishes" at this time
 	last     time.Time
 	azCum    float64
@@ -34,8 +34,23 @@ type simRig struct {
 	rng      *rand.Rand
 }
 
-func newSimRig(set Settings) *simRig {
-	lat, lon := set.SimLat, set.SimLon
+// simConfig places the virtual mount and sets its polar error.
+type simConfig struct {
+	Lat, Lon            float64
+	AltErrDeg, AzErrDeg float64
+}
+
+var defaultSim = simConfig{Lat: 48.1, Lon: 11.6, AltErrDeg: 0.8, AzErrDeg: -1.3}
+
+// connectSim attaches a simulated rig and solver to the session, as Connect
+// would for a real Seestar.
+func connectSim(s *Session, cfg simConfig) (*simRig, error) {
+	sr := newSimRig(cfg)
+	return sr, s.attach(context.Background(), sr, simSolver{sr})
+}
+
+func newSimRig(cfg simConfig) *simRig {
+	lat, lon := cfg.Lat, cfg.Lon
 	atm := astro.StandardAtmosphere
 	pole := polar.TargetPole(lat, atm)
 	pAlt, pAz := astro.VecToAltAz(pole)
@@ -43,7 +58,7 @@ func newSimRig(set Settings) *simRig {
 	if lat < 0 {
 		sign = -1
 	}
-	vis := astro.AltAzToVec(pAlt+set.SimAltErrDeg*astro.Deg, pAz+sign*set.SimAzErrDeg*astro.Deg)
+	vis := astro.AltAzToVec(pAlt+cfg.AltErrDeg*astro.Deg, pAz+sign*cfg.AzErrDeg*astro.Deg)
 	axis := polar.VisibleAxis(vis, lat)
 	r := &simRig{lat: lat, lon: lon, atm: atm, axis: axis, tracking: true, last: time.Now(),
 		model: models.All[2], rng: rand.New(rand.NewPCG(1, 2))}
@@ -81,7 +96,7 @@ func (r *simRig) Info() RigInfo {
 	lat, lon := r.lat, r.lon
 	m := r.model
 	return RigInfo{
-		BaseURL: "simulator", Simulated: true,
+		BaseURL:   "simulator",
 		Camera:    devSim("camera", "Simulated Seestar S50 Camera"),
 		Telescope: devSim("telescope", "Simulated Seestar S50 Telescope"),
 		SensorW:   m.Width, SensorH: m.Height, PixelUM: m.PixelUM,

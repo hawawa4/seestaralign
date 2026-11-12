@@ -19,7 +19,7 @@ type Frame struct {
 	Image    imaging.Image // row-major mono, sensor resolution
 	Start    time.Time
 	Exposure float64
-	Truth    *astro.Vec // simulator only: physical pointing at mid-exposure
+	Truth    *astro.Vec // set only by the test simulator: physical pointing at mid-exposure
 }
 
 func (f Frame) Mid() time.Time {
@@ -49,7 +49,6 @@ type RigInfo struct {
 	AxisRates      []Rate          `json:"axis_rates"`
 	ClockOffsetS   *float64        `json:"clock_offset_s"`
 	Detected       *models.Model   `json:"detected_model"`
-	Simulated      bool            `json:"simulated"`
 }
 
 // Rig is the telescope + camera pair.

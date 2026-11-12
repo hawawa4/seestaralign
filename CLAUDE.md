@@ -11,8 +11,8 @@ Three-point polar alignment (like NINA's TPPA) for ZWO Seestar telescopes in EQ 
 ```sh
 just test                 # go vet ./... && go test ./...
 just build                # -> bin/seestaralign
-just dev                  # go run on 127.0.0.1:8080, settings/workdir in .dev/ (tick "Simulator" in the UI)
-just run                  # build, then serve on 127.0.0.1:8080 (tick "Simulator" in the UI)
+just dev                  # go run on 127.0.0.1:8080, settings/workdir in .dev/
+just run                  # build, then serve on 127.0.0.1:8080
 just linux-amd64 / linux-arm64
 just reference            # regenerate testdata/reference.json from astropy (needs uv)
 
@@ -28,7 +28,7 @@ Binary flags: `-listen`, `-config` (settings JSON; default comes from `$SEESTARA
 The data flow is `web` → `session` → (`Rig`, `frameSolver`) → `astro`/`polar`.
 
 - **`internal/session`** is the core. `Session` holds one mutex-guarded `State` struct, and that struct *is* the API: `web` serialises it whole for `GET /api/state` and pushes it on every change over SSE (`/api/events`). To change state, call `s.update(func(st *State){...})` or hold `s.mu` and call `notifyLocked()`. Any new UI-visible field goes into `State`, and `internal/web/static/index.html` reads it.
-  - `Rig` interface (`rig.go`): telescope plus camera. It has two implementations, `alpacaRig` (real) and `simRig` (`sim.go`, which models a mount with a known polar error, renders synthetic starfields and has knob controls). `simSolver` returns the simulator's ground truth in place of running ASTAP.
+  - `Rig` interface (`rig.go`): telescope plus camera. The only production implementation is `alpacaRig`. `simRig` (`sim_test.go`, test-only, deliberately not part of the app) models a mount with a known polar error, renders synthetic starfields and has knob controls; `simSolver` returns its ground truth in place of running ASTAP. Tests plug it in with `connectSim`, which goes through `Session.attach`, the same path `Connect` uses for a real rig.
   - `frameSolver` interface: `astapSolver` writes a 2×2-binned FITS file and shells out to ASTAP. It retries with other Seestar models that have the same sensor size, and returns the model key that matched so the session can correct the detected model.
   - `measureAndAdjust` is the routine. If `start_enabled`, it first slews to the saved starting position (`slewToStart`; Alt/Az is converted to JNow RA/Dec). It then runs 3 × (expose → solve → `astro.PointingVector`) with `moveRA` (MoveAxis on axis 0 only) between frames, then calls `polar.FitAxis` and `ComputeError`, then loops forever on `polar.Tracker.Update` until cancelled. `run()`'s defer always sends `MoveAxis(0)`. Keep that guarantee, and also the Dec-drift and RA-didn't-move aborts in `moveRA`.
   - Phases: `disconnected → connecting → ready → measuring → adjusting`.

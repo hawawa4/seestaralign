@@ -97,8 +97,6 @@ button:disabled { opacity: .4; cursor: default; }
 svg { display: block; width: 100%; height: auto; }
 svg text { fill: var(--dim); font: 10px system-ui, sans-serif; }
 .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-.knobs { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 10px; }
-.knobs .row button { flex: 1; }
 
 /* frame */
 .frame { position: relative; background: #000; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); min-height: 120px; display: grid; place-items: center; }
@@ -150,21 +148,6 @@ details[open] > summary::after { content: "▾"; }
       <button class="btn big" id="start" disabled>Start</button>
       <button class="btn big secondary" id="stop" disabled>Stop</button>
     </div>
-    <div class="knobs" id="knobs" hidden>
-      <div class="small muted" style="margin-bottom:6px">Simulator knobs</div>
-      <div class="row" style="margin-bottom:6px">
-        <button class="btn secondary" data-knob="alt" data-v="5">Alt +5′</button>
-        <button class="btn secondary" data-knob="alt" data-v="1">+1′</button>
-        <button class="btn secondary" data-knob="alt" data-v="-1">−1′</button>
-        <button class="btn secondary" data-knob="alt" data-v="-5">−5′</button>
-      </div>
-      <div class="row">
-        <button class="btn secondary" data-knob="az" data-v="-5">Az W 5′</button>
-        <button class="btn secondary" data-knob="az" data-v="-1">W 1′</button>
-        <button class="btn secondary" data-knob="az" data-v="1">E 1′</button>
-        <button class="btn secondary" data-knob="az" data-v="5">E 5′</button>
-      </div>
-    </div>
   </section>
 
   <section class="card">
@@ -180,8 +163,7 @@ details[open] > summary::after { content: "▾"; }
       <div class="port"><label for="port">Port</label><input id="port" inputmode="numeric" placeholder="auto" data-set="port" data-type="int0"></div>
       <button class="btn" id="connectBtn">Connect</button>
     </div>
-    <div class="row" style="margin-top:10px; justify-content: space-between; align-items:center">
-      <label class="chk"><input type="checkbox" data-set="simulate"> Simulator</label>
+    <div class="row" style="margin-top:10px; justify-content: flex-end; align-items:center">
       <button class="iconbtn" id="scan">Scan network</button>
     </div>
     <div class="found" id="found"></div>
@@ -218,11 +200,6 @@ details[open] > summary::after { content: "▾"; }
         <div class="full"><label>ASTAP binary</label><input data-set="astap_path" placeholder="auto (astap_cli)" spellcheck="false"><div class="hint" id="astapinfo"></div></div>
         <div><label>Star database</label><input data-set="astap_database" placeholder="auto (e.g. d50)" spellcheck="false"></div>
         <div><label>Database folder</label><input data-set="astap_database_dir" placeholder="auto" spellcheck="false"></div>
-        <div class="full small muted" style="margin-top:4px">Simulator</div>
-        <div><label>Sim latitude</label><input data-set="sim_lat" data-type="num" inputmode="decimal"></div>
-        <div><label>Sim longitude</label><input data-set="sim_lon" data-type="num" inputmode="decimal"></div>
-        <div><label>Sim alt error (°)</label><input data-set="sim_alt_err_deg" data-type="num" inputmode="decimal"></div>
-        <div><label>Sim az error (°)</label><input data-set="sim_az_err_deg" data-type="num" inputmode="decimal"></div>
       </div>
     </details>
   </section>
@@ -348,10 +325,6 @@ $("scan").onclick = async () => {
     });
   } catch (e) { $("found").innerHTML = ""; toast(e.message); }
 };
-document.querySelectorAll("[data-knob]").forEach((b) => b.onclick = async () => {
-  const v = Number(b.dataset.v);
-  try { await api("POST", "/api/sim/knob", b.dataset.knob === "alt" ? { alt: v, az: 0 } : { alt: 0, az: v }); } catch (e) { toast(e.message); }
-});
 
 // ---------- rendering ----------
 const PHASES = { disconnected: "offline", connecting: "connecting…", ready: "connected", measuring: "measuring", adjusting: "adjusting" };
@@ -389,8 +362,7 @@ function render(st) {
   }
   $("warnings").innerHTML = (st.warnings || []).map((w) => `<div class="warn">${esc(w)}</div>`).join("");
   const ast = st.astap;
-  $("astapinfo").textContent = st.settings.simulate ? "Simulator doesn't use ASTAP." :
-    ast.path ? `Using ${ast.path}${ast.databases && ast.databases.length ? " · databases: " + ast.databases.join(", ") : " · no star database detected"}` : "ASTAP not found – install astap_cli";
+  $("astapinfo").textContent = ast.path ? `Using ${ast.path}${ast.databases && ast.databases.length ? " · databases: " + ast.databases.join(", ") : " · no star database detected"}` : "ASTAP not found – install astap_cli";
 
   // steps
   const nPts = (st.points || []).length;
@@ -432,7 +404,6 @@ function render(st) {
   const a = st.adjust;
   $("adjinfo").textContent = a && a.frames ? `${a.frames} frame${a.frames === 1 ? "" : "s"} · turned alt ${fmtAngle(a.beta_deg)}, az ${fmtAngle(a.alpha_deg)}` : " ";
   $("adjwarn").innerHTML = ((a && a.warnings) || []).map((w) => `<div class="warn">${esc(w)}</div>`).join("");
-  $("knobs").hidden = !(st.rig && st.rig.simulated && ph === "adjusting");
   drawBull(st);
   drawSpark(st.history || []);
 

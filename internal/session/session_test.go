@@ -1,7 +1,6 @@
 package session
 
 import (
-	"context"
 	"encoding/json"
 	"math"
 	"path/filepath"
@@ -33,13 +32,13 @@ func runSim(t *testing.T, lat, lon, altErr, azErr float64) {
 	dir := t.TempDir()
 	s := New(filepath.Join(dir, "settings.json"), dir)
 	patch, _ := json.Marshal(map[string]any{
-		"simulate": true, "exposure_s": 0.1, "move_rate": 10, "settle_s": 0,
-		"sim_lat": lat, "sim_lon": lon, "sim_alt_err_deg": altErr, "sim_az_err_deg": azErr,
+		"exposure_s": 0.1, "move_rate": 10, "settle_s": 0,
 	})
 	if err := s.UpdateSettings(patch); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Connect(context.Background()); err != nil {
+	sr, err := connectSim(s, simConfig{Lat: lat, Lon: lon, AltErrDeg: altErr, AzErrDeg: azErr})
+	if err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Start(); err != nil {
@@ -67,13 +66,10 @@ func runSim(t *testing.T, lat, lon, altErr, azErr float64) {
 	// Turn the knobs by the measured error. On a wedge the altitude pivot also
 	// nudges azimuth when the axis is off-meridian, so compare against the
 	// simulator's true axis rather than expecting exactly zero.
-	if err := s.SimKnob(-e.AltDeg*60, -e.AzDeg*60); err != nil {
-		t.Fatal(err)
-	}
+	sr.Knob(-e.AltDeg*60, -e.AzDeg*60)
 	time.Sleep(100 * time.Millisecond)
 	start := st.Adjust.Frames
 	st = waitFor(t, s, 20*time.Second, func(st *State) bool { return st.Adjust != nil && st.Adjust.Frames >= start+2 })
-	sr := s.rig.(*simRig)
 	sr.mu.Lock()
 	truth := polar.ComputeError(sr.axis, lat, polar.TargetPole(lat, astro.StandardAtmosphere))
 	sr.mu.Unlock()
@@ -117,7 +113,7 @@ func TestStartPositionSlew(t *testing.T) {
 	dir := t.TempDir()
 	s := New(filepath.Join(dir, "settings.json"), dir)
 	patch, _ := json.Marshal(map[string]any{
-		"simulate": true, "exposure_s": 0.1, "move_rate": 10, "settle_s": 0,
+		"exposure_s": 0.1, "move_rate": 10, "settle_s": 0,
 		"start_enabled": true, "start_mode": "altaz", "start_alt_deg": 35, "start_az_deg": 110,
 	})
 	if err := s.UpdateSettings(patch); err != nil {
@@ -128,7 +124,7 @@ func TestStartPositionSlew(t *testing.T) {
 	if got := s2.settings(); !got.StartEnabled || got.StartAltDeg != 35 || got.StartAzDeg != 110 {
 		t.Fatalf("start position not persisted: %+v", got)
 	}
-	if err := s.Connect(context.Background()); err != nil {
+	if _, err := connectSim(s, defaultSim); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Start(); err != nil {
