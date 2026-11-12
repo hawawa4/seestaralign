@@ -180,6 +180,13 @@ The star database is chosen at build time with `--build-arg ASTAP_DB=...`:
 
 ## Using it
 
+The page has four tabs: **Align** (checklist, progress, live error readout, last frame),
+**Connect** (address, scan, device and model), **Settings** (grouped, collapsible
+sections that save as you type) and **Log**. The night (red) theme keeps your eyes
+dark-adapted, and Settings → Display has a dimmer that goes below your screen's minimum
+brightness. While an alignment runs the screen is kept awake, when the browser allows
+it (that needs `localhost` or https).
+
 1. Connect. The default address is `seestar.local`, and you can type an IP over it.
    Port *auto* tries Alpaca discovery first, then 32323. Camera, mount, model and site
    are read from the device. The S50/S30 and the Pro models can't be told apart from
@@ -187,8 +194,8 @@ The star database is chosen at build time with `--build-arg ASTAP_DB=...`:
    only matches another model's scale, the app switches models automatically.
 2. Point the scope **near the meridian, 30–60° up, away from the pole and the zenith**,
    with room for 40° of RA travel in the move direction (east by default). Or let the
-   app do it: in Settings, tick *Slew to a starting position first* and enter the
-   position as Alt/Az or RA/Dec. It's saved with the other settings, and from then on
+   app do it: in Settings, switch on *Slew here first* and set the
+   position as Alt/Az (drag on the sky dome) or RA/Dec. It's saved with the other settings, and from then on
    every run begins by slewing there (alt/az is converted to RA/Dec for the slew; RA/Dec
    is in the frame the mount reports, JNow).
 3. Press **Start**. It takes three frames with two 20° moves between them, and then

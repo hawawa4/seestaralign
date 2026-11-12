@@ -124,6 +124,7 @@ type Site struct {
 type State struct {
 	Phase       string         `json:"phase"` // disconnected connecting ready measuring adjusting
 	Step        string         `json:"step"`
+	Slewing     bool           `json:"slewing"` // slewing to (or settling at) the starting position
 	Settings    Settings       `json:"settings"`
 	Rig         *RigInfo       `json:"rig"`
 	Site        *Site          `json:"site"`
@@ -614,6 +615,8 @@ func startTarget(set Settings, site Site, now time.Time) (raHours, decDeg float6
 // position and wait for the mount to arrive and settle.
 func (s *Session) slewToStart(ctx context.Context, rig Rig, set Settings, site Site) error {
 	ra, dec, desc := startTarget(set, site, time.Now())
+	s.update(func(st *State) { st.Slewing = true })
+	defer s.update(func(st *State) { st.Slewing = false })
 	s.step("Slewing to the starting position")
 	s.info("Slewing to the starting position: %s", desc)
 	if err := rig.SetTracking(ctx, true); err != nil { // slews need tracking on
