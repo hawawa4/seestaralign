@@ -1,0 +1,27 @@
+.hero { text-align: center; padding: 6px 0 4px; }
+.hero .num { font-size: clamp(52px, 15vw, 84px); font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -1.5px; transition: color 0.4s; text-shadow: 0 0 30px currentColor; }
+.hero .lbl { font-size: 12px; color: var(--dim); margin-top: 6px; letter-spacing: 0.6px; text-transform: uppercase; }
+.card.aligned { border-color: var(--good); box-shadow: 0 0 0 1px var(--good), 0 0 40px color-mix(in srgb, var(--good) 28%, transparent); animation: aligned 2.6s ease-in-out infinite; }
+@keyframes aligned { 50% { box-shadow: 0 0 0 1px var(--good), 0 0 70px color-mix(in srgb, var(--good) 38%, transparent); } }
+.banner { text-align: center; font-size: 13px; color: var(--good); font-weight: 600; letter-spacing: 0.5px; margin-top: 8px; }
+
+.axes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0 6px; }
+.axis { border: 1px solid var(--line); background: var(--panel-2); border-radius: 16px; padding: 12px 10px; text-align: center; }
+.axis .t { font-size: 11.5px; color: var(--dim); letter-spacing: 0.8px; text-transform: uppercase; }
+.axis .arrow { width: 44px; height: 44px; margin: 8px auto 6px; border-radius: 50%; border: 1.5px solid var(--line-2); display: grid; place-items: center; font-size: 19px; line-height: 1; color: var(--text); }
+.axis .arrow.go { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.axis .arrow.up { animation: bob-u 1.3s ease-in-out infinite; }
+.axis .arrow.down { animation: bob-d 1.3s ease-in-out infinite; }
+.axis .arrow.left { animation: bob-l 1.3s ease-in-out infinite; }
+.axis .arrow.right { animation: bob-r 1.3s ease-in-out infinite; }
+.axis .arrow.ok { border-color: var(--good); color: var(--good); }
+@keyframes bob-u { 50% { transform: translateY(-4px); } }
+@keyframes bob-d { 50% { transform: translateY(4px); } }
+@keyframes bob-l { 50% { transform: translateX(-4px); } }
+@keyframes bob-r { 50% { transform: translateX(4px); } }
+.axis .v { font-size: 25px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.axis .d { font-size: 13.5px; min-height: 20px; }
+
+.viz { display: grid; grid-template-columns: minmax(0, 230px) 1fr; gap: 16px; align-items: center; margin-top: 14px; }
+@media (max-width: 460px) { .viz { grid-template-columns: 1fr; } .viz svg.bull { max-width: 270px; margin: 0 auto; } }
+.kvs { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--dim); margin-top: 8px; }

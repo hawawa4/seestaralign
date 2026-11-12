@@ -1,0 +1,8 @@
+.pill { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; padding: 4px 11px 4px 9px; border-radius: 99px; border: 1px solid var(--line-2); color: var(--dim); white-space: nowrap; background: var(--panel-2); }
+.pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); display: block; }
+.pill.on { color: var(--text); }
+.pill.on i { background: var(--good); box-shadow: 0 0 8px var(--good); }
+.pill.live { color: var(--text); border-color: var(--accent); }
+.pill.live i { background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
+.pill.busy i { background: var(--ok); animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.7); } }

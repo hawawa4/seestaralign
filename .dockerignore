@@ -2,3 +2,6 @@ bin/
 .git/
 *.fits
 *.ini
+web/node_modules/
+.dev/
+internal/web/dist/*

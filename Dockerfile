@@ -1,5 +1,14 @@
 # syntax=docker/dockerfile:1
 
+# ---- build the web UI (static files, so it runs once on the build machine) ----
+FROM --platform=$BUILDPLATFORM node:22-trixie-slim AS web
+WORKDIR /web
+COPY web/package.json web/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY web/ ./
+# writes to ../internal/web/dist, i.e. /internal/web/dist
+RUN npm run build
+
 # ---- build the Go binary (cross-compiles natively for any target arch) ----
 FROM --platform=$BUILDPLATFORM golang:1.26-trixie AS build
 ARG TARGETOS TARGETARCH
@@ -7,6 +16,7 @@ WORKDIR /src
 COPY go.mod ./
 RUN go mod download
 COPY . .
+COPY --from=web /internal/web/dist ./internal/web/dist
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -trimpath -ldflags="-s -w" -o /out/seestaralign ./cmd/seestaralign
 

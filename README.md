@@ -34,8 +34,10 @@ runs in both hemispheres.
 
 ## Build from source
 
-You need **Go 1.26.3 or newer** (see `go.mod`). There are no third-party modules and no
-cgo, so the result is a single static binary.
+You need **Go 1.26.3 or newer** (see `go.mod`) and **Node.js 22.12 or newer**. Node is
+only used at build time, to compile the web UI (TypeScript + Preact + Vite) into static
+files; the Go side has no third-party modules and no cgo. The UI is embedded in the
+binary, so the result is still a single static file.
 
 ```sh
 git clone https://github.com/hawawa4/seestaralign.git
@@ -49,8 +51,13 @@ just test                  # go vet + all tests; no hardware or ASTAP needed
 Without [`just`](https://github.com/casey/just):
 
 ```sh
+(cd web && npm ci && npm run build)     # writes internal/web/dist
 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/seestaralign ./cmd/seestaralign
 ```
+
+A plain `go build` without the first step still compiles, but the binary then answers
+with "no web UI built in" instead of serving the page. The Docker image builds the UI
+itself.
 
 ## Run locally
 
@@ -240,9 +247,10 @@ plate-solve noise:
 ## Development
 
 ```sh
-just test      # unit, simulated-mount, fake Alpaca server and fake ASTAP tests
-just dev       # go run on http://127.0.0.1:8080 with settings in .dev/
-just run       # build, then run the release binary
+just test      # UI type-check + unit tests, then Go vet, simulated-mount, fake Alpaca and fake ASTAP tests
+just dev       # hot-reloading UI on http://localhost:5173, Go API on 127.0.0.1:8080, settings in .dev/
+just web       # build only the UI into internal/web/dist
+just run       # build everything, then run the release binary
 just reference # regenerate astropy reference values (needs uv)
 ```
 
@@ -252,7 +260,10 @@ Layout:
 - `internal/alpaca`: client, discovery, mDNS
 - `internal/solver`: ASTAP wrapper
 - `internal/session`: the routine and the state (the simulated mount used by the tests lives in `sim_test.go`)
-- `internal/web`: HTTP/SSE server and the embedded UI
+- `internal/web`: HTTP/SSE server; embeds the built UI from `internal/web/dist`
+- `web/`: the UI source (TypeScript, Preact, Vite). `src/types.ts` mirrors the server's JSON,
+  `src/hooks/` holds the state, settings and theme logic, `src/components/` and `src/tabs/`
+  the views (each with its own CSS), `src/lib/` the pure, unit-tested helpers
 
 ### Not yet verified on real hardware
 

@@ -9,14 +9,16 @@ Three-point polar alignment (like NINA's TPPA) for ZWO Seestar telescopes in EQ 
 ## Commands (justfile; `just` lists recipes)
 
 ```sh
-just test                 # go vet ./... && go test ./...
-just build                # -> bin/seestaralign
-just dev                  # go run on 127.0.0.1:8080, settings/workdir in .dev/
+just test                 # web: tsc + vitest; then go vet ./... && go test ./...
+just web                  # build the UI -> internal/web/dist (embedded by the Go binary)
+just build                # just web, then -> bin/seestaralign
+just dev                  # Vite UI on :5173 (hot reload) proxying /api to the Go server on 127.0.0.1:8080; state in .dev/
 just run                  # build, then serve on 127.0.0.1:8080
 just linux-amd64 / linux-arm64
 just reference            # regenerate testdata/reference.json from astropy (needs uv)
 
-go test ./internal/polar -run TestAdjustmentTracksKnobTurns -v   # single test
+go test ./internal/polar -run TestAdjustmentTracksKnobTurns -v   # single Go test
+cd web && npx vitest run src/lib/steps.test.ts                    # single UI test
 ```
 
 The `internal/session` tests run full simulated alignments in real time and take about 30 s. No real hardware or ASTAP install is needed for any test. ASTAP is faked with a shell script named `astap_cli` written to a temp dir, and Alpaca is faked with an `httptest` server that wraps the simulator (`alpaca_fake_test.go`).
@@ -27,7 +29,7 @@ Binary flags: `-listen`, `-config` (settings JSON; default comes from `$SEESTARA
 
 The data flow is `web` → `session` → (`Rig`, `frameSolver`) → `astro`/`polar`.
 
-- **`internal/session`** is the core. `Session` holds one mutex-guarded `State` struct, and that struct *is* the API: `web` serialises it whole for `GET /api/state` and pushes it on every change over SSE (`/api/events`). To change state, call `s.update(func(st *State){...})` or hold `s.mu` and call `notifyLocked()`. Any new UI-visible field goes into `State`, and `internal/web/static/index.html` reads it.
+- **`internal/session`** is the core. `Session` holds one mutex-guarded `State` struct, and that struct *is* the API: `web` serialises it whole for `GET /api/state` and pushes it on every change over SSE (`/api/events`). To change state, call `s.update(func(st *State){...})` or hold `s.mu` and call `notifyLocked()`. Any new UI-visible field goes into `State`, and gets a matching field in `web/src/types.ts` (the TypeScript types are hand-written, so keep them in sync).
   - `Rig` interface (`rig.go`): telescope plus camera. The only production implementation is `alpacaRig`. `simRig` (`sim_test.go`, test-only, deliberately not part of the app) models a mount with a known polar error, renders synthetic starfields and has knob controls; `simSolver` returns its ground truth in place of running ASTAP. Tests plug it in with `connectSim`, which goes through `Session.attach`, the same path `Connect` uses for a real rig.
   - `frameSolver` interface: `astapSolver` writes a 2×2-binned FITS file and shells out to ASTAP. It retries with other Seestar models that have the same sensor size, and returns the model key that matched so the session can correct the detected model.
   - `measureAndAdjust` is the routine. If `start_enabled`, it first slews to the saved starting position (`slewToStart`; Alt/Az is converted to JNow RA/Dec). It then runs 3 × (expose → solve → `astro.PointingVector`) with `moveRA` (MoveAxis on axis 0 only) between frames, then calls `polar.FitAxis` and `ComputeError`, then loops forever on `polar.Tracker.Update` until cancelled. `run()`'s defer always sends `MoveAxis(0)`. Keep that guarantee, and also the Dec-drift and RA-didn't-move aborts in `moveRA`.
@@ -37,7 +39,8 @@ The data flow is `web` → `session` → (`Rig`, `frameSolver`) → `astro`/`pol
 - **`internal/alpaca`**: minimal Alpaca HTTP client (with binary `ImageBytes` and a JSON fallback), UDP discovery and its own mDNS resolver for `seestar.local` (no avahi needed). The Seestar's native Alpaca port is 32323.
 - **`internal/solver`**: wraps `astap_cli`, finds the binary and star databases, and parses its `.ini` output. It distinguishes `ErrNoSolution` (retryable) from fatal errors (missing DB, or the GUI build in place of `astap_cli`).
 - **`internal/models`**: Seestar optics table (S30/S30 Pro/S50/S50 Pro). The S30 and S50 share a sensor size, and so do the two Pro models, so detection from the sensor alone is ambiguous. That is why plate-solve correction exists.
-- **`internal/web`**: routes in `server.go`. The UI is one embedded file, `static/index.html` (vanilla JS, no build step).
+- **`internal/web`**: routes in `server.go`. It embeds `dist/` (the built UI) with `//go:embed all:dist`; `dist/` is gitignored except a `.gitkeep`, so `go build`/`go vet`/`go test` work without Node, and the binary then serves a "UI not built" 503 page. Real builds run `just web` first (the Dockerfile has a Node stage for it).
+- **`web/`** is the UI: TypeScript + Preact + Vite, no UI library beyond Preact, CSS co-located with each component (plain CSS, shared tokens in `styles/tokens.css`; the two themes are "night" = red-only and "dark"). Layout: `src/hooks/` (`useServerState` subscribes to SSE; `useSettings` overlays unsaved edits on the server's settings and autosaves them debounced; theme, toast, wake lock, tween), `src/components/` (reusable pieces), `src/tabs/` (Align, Connect, Settings, Log), `src/lib/` (pure helpers with vitest tests: angle formatting, step progress, dome/bullseye geometry). Gotchas with Preact 11: numeric inline styles do **not** get `px` appended (use a CSS class or a string), and `main.tsx` must import the base styles *before* `App` so component CSS can override them. Frontend dependencies are build-time only; Go stays stdlib-only.
 
 ## Deployment notes
 

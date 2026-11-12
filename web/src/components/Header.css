@@ -1,0 +1,10 @@
+header {
+  position: sticky; top: 0; z-index: 15;
+  background: var(--glass); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line); padding-top: env(safe-area-inset-top);
+}
+header .wrap { display: flex; align-items: center; gap: 10px; height: 54px; }
+.logo { width: 26px; height: 26px; color: var(--accent); filter: drop-shadow(0 0 6px var(--accent)); flex: none; }
+header h1 { font-size: 16px; margin: 0; font-weight: 650; letter-spacing: 0.3px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.iconbtn { background: var(--panel-2); border: 1px solid var(--line-2); color: var(--dim); border-radius: 12px; width: 36px; height: 34px; cursor: pointer; display: grid; place-items: center; font-size: 16px; }
+.iconbtn:hover { color: var(--text); border-color: var(--dim); }

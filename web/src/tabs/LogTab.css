@@ -1,0 +1,7 @@
+.log { font: 12.5px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; max-height: 62vh; overflow: auto; }
+.log div { white-space: pre-wrap; overflow-wrap: anywhere; padding: 1px 0 1px 12px; border-left: 2px solid transparent; }
+.log time { color: var(--faint); margin-right: 8px; }
+.log .warn-l { color: var(--ok); border-left-color: var(--ok); }
+.log .error-l { color: var(--bad); font-weight: 600; border-left-color: var(--bad); }
+.toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.toolbar .sp { flex: 1; }

@@ -1,0 +1,4 @@
+.dome { touch-action: none; cursor: crosshair; user-select: none; -webkit-user-select: none; }
+.dome.off { opacity: 0.45; }
+.dome .pole-label { fill: var(--good); }
+.dome .ring-label { font-size: 8px; }

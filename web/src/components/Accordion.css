@@ -1,0 +1,10 @@
+.acc { padding: 0; overflow: hidden; }
+.acc > summary { list-style: none; cursor: pointer; padding: 15px 16px; display: flex; align-items: center; gap: 12px; }
+.acc > summary::-webkit-details-marker { display: none; }
+.acc > summary .ico { flex: none; width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: var(--panel-2); border: 1px solid var(--line-2); color: var(--accent); }
+.acc > summary .ico svg { width: 18px; height: 18px; }
+.acc > summary .t { flex: 1; min-width: 0; font-weight: 600; font-size: 15px; }
+.acc > summary .t small { display: block; font-weight: 400; color: var(--dim); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc > summary::after { content: ''; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--dim); border-bottom: 2px solid var(--dim); transform: rotate(45deg); transition: transform 0.25s; margin-right: 4px; }
+.acc[open] > summary::after { transform: rotate(-135deg); }
+.acc .body { padding: 16px 16px 18px; border-top: 1px solid var(--line); animation: rise 0.25s ease both; }

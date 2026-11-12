@@ -9,14 +9,37 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"strings"
 	"time"
 
 	"seestaralign/internal/alpaca"
 	"seestaralign/internal/session"
 )
 
-//go:embed static
-var static embed.FS
+// dist is the built frontend (web/ -> `npm run build`). A .gitkeep keeps the
+// directory present so the Go code compiles before the frontend is built.
+//
+//go:embed all:dist
+var dist embed.FS
+
+// frontend serves the built single-page app. Hashed files under /assets/ are
+// cached for good; index.html always revalidates so a new build shows up.
+func frontend(fsys fs.FS) http.Handler {
+	if _, err := fs.Stat(fsys, "index.html"); err != nil {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "This binary has no web UI built in. Build it with `just build` (needs Node.js), or run `just dev`.", http.StatusServiceUnavailable)
+		})
+	}
+	files := http.FileServerFS(fsys)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/assets/") {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		} else {
+			w.Header().Set("Cache-Control", "no-cache")
+		}
+		files.ServeHTTP(w, r)
+	})
+}
 
 func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -30,8 +53,8 @@ func fail(w http.ResponseWriter, err error) {
 
 func Handler(s *session.Session) http.Handler {
 	mux := http.NewServeMux()
-	sub, _ := fs.Sub(static, "static")
-	mux.Handle("GET /", http.FileServerFS(sub))
+	sub, _ := fs.Sub(dist, "dist")
+	mux.Handle("GET /", frontend(sub))
 
 	mux.HandleFunc("GET /api/state", func(w http.ResponseWriter, r *http.Request) {
 		b, err := s.Snapshot()

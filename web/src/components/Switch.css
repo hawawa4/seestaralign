@@ -1,0 +1,8 @@
+.switch { display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: 14.5px; color: var(--text); margin: 0; }
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.switch .tr { flex: none; width: 44px; height: 26px; border-radius: 99px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--line-2); position: relative; transition: background 0.2s, border-color 0.2s; }
+.switch .tr::after { content: ''; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--dim); transition: transform 0.22s cubic-bezier(0.3, 1.4, 0.5, 1), background 0.2s; }
+.switch input:checked + .tr { background: color-mix(in srgb, var(--accent) 30%, transparent); border-color: var(--accent); }
+.switch input:checked + .tr::after { transform: translateX(18px); background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.switch input:focus-visible + .tr { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+.switch .sw-t small { display: block; color: var(--dim); font-size: 12px; margin-top: 1px; }

@@ -1,0 +1,66 @@
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body {
+  font: 15px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh;
+  background:
+    radial-gradient(900px 420px at 15% -8%, var(--halo), transparent 70%),
+    var(--stars, none), var(--bg);
+  background-attachment: fixed;
+  -webkit-tap-highlight-color: transparent;
+  padding-bottom: calc(var(--navh) + 28px + env(safe-area-inset-bottom));
+}
+@media (min-width: 820px) { body { padding-bottom: 40px; } }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+button { font: inherit; color: inherit; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+.tab { padding-top: 14px; animation: rise 0.35s ease both; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+.card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px; margin: 0 0 14px; position: relative;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset, 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+.card h2 { margin: 0 0 4px; font-size: 13px; font-weight: 650; letter-spacing: 0.9px; text-transform: uppercase; color: var(--dim); }
+.card .sub { font-size: 13px; color: var(--dim); margin: 0 0 12px; }
+.eyebrow { font-size: 11.5px; letter-spacing: 0.9px; text-transform: uppercase; color: var(--dim); font-weight: 600; }
+.pagehead { display: flex; align-items: baseline; justify-content: space-between; margin: 0 2px 12px; }
+.pagehead h2 { margin: 0; font-size: 20px; }
+.muted { color: var(--dim); } .faint { color: var(--faint); } .small { font-size: 12.5px; }
+.good { color: var(--good); } .okc { color: var(--ok); } .badc { color: var(--bad); }
+.grid2 { display: grid; gap: 0 16px; }
+@media (min-width: 900px) { .grid2 { grid-template-columns: 1fr 1fr; align-items: start; } }
+svg { display: block; width: 100%; height: auto; }
+svg text { fill: var(--dim); font: 10px system-ui, sans-serif; }
+
+button.btn {
+  background: var(--accent-grad); color: var(--on-accent); border: 0; border-radius: 14px;
+  padding: 11px 18px; font-weight: 650; cursor: pointer; white-space: nowrap; box-shadow: var(--glow);
+  transition: transform 0.12s, filter 0.15s, box-shadow 0.2s;
+}
+button.btn:hover { filter: brightness(1.1); }
+button.btn:active { transform: scale(0.98); }
+button.btn.ghost { background: var(--panel-2); color: var(--text); border: 1px solid var(--line-2); box-shadow: none; font-weight: 550; }
+button.btn.big { width: 100%; padding: 16px; font-size: 17px; border-radius: 16px; }
+button.btn.sm { padding: 7px 12px; font-size: 13px; border-radius: 11px; }
+button:disabled { opacity: 0.45; cursor: default; filter: none !important; transform: none !important; }
+.chip { background: var(--panel-2); border: 1px solid var(--line-2); color: var(--text); border-radius: 99px; padding: 6px 13px; font-size: 13px; cursor: pointer; margin: 8px 8px 0 0; }
+.chip:hover { border-color: var(--accent); }
+
+.warn { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--ok); background: color-mix(in srgb, var(--ok) 8%, transparent); border-radius: 14px; padding: 10px 12px; margin: 0 0 12px; font-size: 13.5px; }
+.warn::before { content: '!'; flex: none; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--ok); display: grid; place-items: center; font-weight: 700; font-size: 12px; margin-top: 1px; }
+
+.icon { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pulse { transform-origin: center; transform-box: fill-box; animation: sonar 2s ease-out infinite; }
+@keyframes sonar { from { transform: scale(1); opacity: 0.7; } to { transform: scale(3); opacity: 0; } }
+
+/* small spacing helpers */
+.mt-6 { margin-top: 6px; } .mt-10 { margin-top: 10px; } .mt-12 { margin-top: 12px; } .mt-14 { margin-top: 14px; } .mt-16 { margin-top: 16px; }
+.mb-10 { margin-bottom: 10px; }
+.dimmed { opacity: 0.55; }
+.row.between { justify-content: space-between; }
+.label-row { display: flex; justify-content: space-between; }
+.label-row b { color: var(--text); }

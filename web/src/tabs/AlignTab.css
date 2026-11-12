@@ -1,0 +1,9 @@
+.align { display: grid; gap: 0 16px; }
+@media (min-width: 900px) {
+  .align { grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr); align-items: start; }
+  .align .actions { grid-column: 1 / -1; }
+}
+.actions { position: sticky; bottom: calc(var(--navh) + env(safe-area-inset-bottom) + 10px); z-index: 8; padding: 22px 0 6px; background: linear-gradient(to top, var(--bg) 40%, transparent); display: grid; justify-items: center; pointer-events: none; }
+.actions button { pointer-events: auto; max-width: 440px; box-shadow: var(--glow), 0 8px 26px rgba(0, 0, 0, 0.5); }
+.actions button.ghost { background: var(--solid); }
+@media (min-width: 820px) { .actions { bottom: 16px; } }

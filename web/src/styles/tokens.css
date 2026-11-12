@@ -1,0 +1,47 @@
+/* Two themes. "night" is red-only so it keeps your eyes dark-adapted. */
+:root {
+  --bg: #030000;
+  --halo: rgba(255, 60, 40, 0.1);
+  --panel: rgba(26, 5, 5, 0.78);
+  --panel-2: rgba(255, 70, 50, 0.05);
+  --solid: #160505;
+  --glass: rgba(10, 1, 1, 0.82);
+  --line: #3a0f0b;
+  --line-2: #5e1b13;
+  --text: #ff5a48;
+  --dim: #b23427;
+  --faint: #6b1f17;
+  --good: #ff9a7a;
+  --ok: #ff5a48;
+  --bad: #e0301e;
+  --accent: #ff4a38;
+  --accent-grad: linear-gradient(135deg, #ff6a50, #c5261a);
+  --on-accent: #1c0200;
+  --glow: 0 0 28px rgba(255, 60, 40, 0.22);
+  --star: #ff6a55;
+  --img-filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(0.85);
+  --radius: 18px;
+  --navh: 62px;
+}
+:root[data-theme='dark'] {
+  --bg: #080b10;
+  --halo: rgba(88, 166, 255, 0.1);
+  --panel: rgba(20, 26, 34, 0.82);
+  --panel-2: rgba(120, 160, 220, 0.05);
+  --solid: #141a22;
+  --glass: rgba(10, 14, 20, 0.85);
+  --line: #242c37;
+  --line-2: #364150;
+  --text: #e6edf3;
+  --dim: #94a1b0;
+  --faint: #566272;
+  --good: #3fb950;
+  --ok: #d29922;
+  --bad: #f85149;
+  --accent: #58a6ff;
+  --accent-grad: linear-gradient(135deg, #6cb2ff, #3a7bd5);
+  --on-accent: #04101e;
+  --glow: 0 0 28px rgba(88, 166, 255, 0.18);
+  --star: #9db4d0;
+  --img-filter: none;
+}

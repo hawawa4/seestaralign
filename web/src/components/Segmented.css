@@ -1,0 +1,5 @@
+.seg { display: inline-flex; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--line-2); border-radius: 12px; padding: 3px; gap: 2px; }
+.seg.block { display: flex; }
+.seg.block button { flex: 1; }
+.seg button { background: none; border: 0; padding: 7px 14px; border-radius: 9px; color: var(--dim); cursor: pointer; font-size: 13.5px; transition: background 0.2s, color 0.2s; }
+.seg button.on { background: var(--accent-grad); color: var(--on-accent); font-weight: 650; }
