@@ -188,16 +188,28 @@ func PointingVector(raDeg, decDeg float64, t time.Time, latDeg, lonDeg float64, 
 	return v.Unit()
 }
 
+// HorizonToRADecNow converts a geometric (unrefracted) horizon-frame vector
+// into the JNow RA (hours) and Dec (degrees) a mount reports for it.
+func HorizonToRADecNow(v Vec, t time.Time, latDeg, lonDeg float64) (raHours, decDeg float64) {
+	ra, dec := horizonToJNow(v, JulianDate(t), latDeg, lonDeg)
+	return ra / Deg / 15, dec / Deg
+}
+
+func horizonToJNow(v Vec, jd, latDeg, lonDeg float64) (ra, dec float64) {
+	hv := EquatorialToHorizon(latDeg * Deg).T().MulVec(v.Unit())
+	ha := math.Atan2(-hv[1], hv[0])
+	dec = math.Asin(clamp(hv[2]))
+	ra = math.Mod(LST(jd, lonDeg)-ha+4*math.Pi, 2*math.Pi)
+	return ra, dec
+}
+
 // HorizonToJ2000 is the inverse of PointingVector; returns degrees.
 func HorizonToJ2000(v Vec, t time.Time, latDeg, lonDeg float64, atm Atmosphere) (raDeg, decDeg float64) {
 	if atm.Enabled {
 		v = RemoveRefraction(v, atm)
 	}
 	jd := JulianDate(t)
-	hv := EquatorialToHorizon(latDeg * Deg).T().MulVec(v.Unit())
-	ha := math.Atan2(-hv[1], hv[0])
-	dec := math.Asin(clamp(hv[2]))
-	raNow := math.Mod(LST(jd, lonDeg)-ha+4*math.Pi, 2*math.Pi)
+	raNow, dec := horizonToJNow(v, jd, latDeg, lonDeg)
 	ra, d := JNowToJ2000(raNow, dec, jd)
 	return ra / Deg, d / Deg
 }

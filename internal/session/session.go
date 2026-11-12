@@ -43,6 +43,16 @@ type Settings struct {
 	SettleS         float64 `json:"settle_s"`
 	SearchRadiusDeg float64 `json:"search_radius_deg"`
 
+	// Starting position: when enabled, the first step of every run is a slew
+	// here. The RA/Dec form is in the mount's own frame (JNow), the same
+	// numbers the mount reports.
+	StartEnabled bool    `json:"start_enabled"`
+	StartMode    string  `json:"start_mode"` // altaz | radec
+	StartAltDeg  float64 `json:"start_alt_deg"`
+	StartAzDeg   float64 `json:"start_az_deg"`
+	StartRAHours float64 `json:"start_ra_hours"`
+	StartDecDeg  float64 `json:"start_dec_deg"`
+
 	Refraction  bool    `json:"refraction"`
 	PressureHPa float64 `json:"pressure_hpa"`
 	TempC       float64 `json:"temp_c"`
@@ -63,6 +73,7 @@ func DefaultSettings() Settings {
 	return Settings{
 		Host: "seestar.local", CameraNum: -1, TelescopeNum: -1,
 		ExposureS: 3, MoveDeg: 20, MoveRate: 3, Direction: "east", SettleS: 2, SearchRadiusDeg: 15,
+		StartMode: "altaz", StartAltDeg: 50, StartAzDeg: 180,
 		Refraction: true, PressureHPa: 1013.25, TempC: 15, SyncClock: true,
 		SimLat: 48.1, SimLon: 11.6, SimAltErrDeg: 0.8, SimAzErrDeg: -1.3,
 	}
@@ -274,6 +285,21 @@ func (s *Session) UpdateSettings(patch []byte) error {
 	}
 	if set.MoveRate <= 0 {
 		return errors.New("move rate must be positive")
+	}
+	if set.StartMode != "altaz" && set.StartMode != "radec" {
+		return errors.New(`start position mode must be "altaz" or "radec"`)
+	}
+	if set.StartAltDeg < 0 || set.StartAltDeg > 90 {
+		return errors.New("start altitude must be between 0° and 90°")
+	}
+	if set.StartAzDeg < 0 || set.StartAzDeg >= 360 {
+		return errors.New("start azimuth must be between 0° and 360°")
+	}
+	if set.StartRAHours < 0 || set.StartRAHours >= 24 {
+		return errors.New("start RA must be between 0 h and 24 h")
+	}
+	if set.StartDecDeg < -90 || set.StartDecDeg > 90 {
+		return errors.New("start Dec must be within ±90°")
 	}
 	if (set.Lat == nil) != (set.Lon == nil) {
 		return errors.New("set both latitude and longitude, or neither")
@@ -516,6 +542,12 @@ func (s *Session) measureAndAdjust(ctx context.Context) error {
 		s.warn("Couldn't switch tracking on: %v", err)
 	}
 
+	if set.StartEnabled {
+		if err := s.slewToStart(ctx, rig, set, site); err != nil {
+			return err
+		}
+	}
+
 	var pts [3]astro.Vec
 	var times [3]time.Time
 	var off *hint // last (solved - mount) offset, refines solve hints
@@ -583,6 +615,68 @@ func (s *Session) measureAndAdjust(ctx context.Context) error {
 		})
 	}
 	return ctx.Err()
+}
+
+// startTarget is the mount-frame (JNow) RA in hours and Dec in degrees of the
+// configured starting position.
+func startTarget(set Settings, site Site, now time.Time) (raHours, decDeg float64, desc string) {
+	if set.StartMode == "radec" {
+		return set.StartRAHours, set.StartDecDeg, fmt.Sprintf("RA %.3f h, Dec %+.2f°", set.StartRAHours, set.StartDecDeg)
+	}
+	v := astro.AltAzToVec(set.StartAltDeg*astro.Deg, set.StartAzDeg*astro.Deg)
+	ra, dec := astro.HorizonToRADecNow(v, now, site.Lat, site.Lon)
+	return ra, dec, fmt.Sprintf("alt %.1f° az %.1f° (RA %.3f h, Dec %+.2f°)", set.StartAltDeg, set.StartAzDeg, ra, dec)
+}
+
+// slewToStart is the first step of a run: slew to the saved starting
+// position and wait for the mount to arrive and settle.
+func (s *Session) slewToStart(ctx context.Context, rig Rig, set Settings, site Site) error {
+	ra, dec, desc := startTarget(set, site, time.Now())
+	s.step("Slewing to the starting position")
+	s.info("Slewing to the starting position: %s", desc)
+	if err := rig.SetTracking(ctx, true); err != nil { // slews need tracking on
+		s.warn("Couldn't switch tracking on: %v", err)
+	}
+	if err := rig.SlewTo(ctx, ra, dec); err != nil {
+		return fmt.Errorf("slewing to the starting position: %w", err)
+	}
+	abort := func() {
+		bg, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = rig.AbortSlew(bg)
+	}
+	t0 := time.Now()
+	for {
+		select {
+		case <-ctx.Done():
+			abort()
+			return ctx.Err()
+		case <-time.After(500 * time.Millisecond):
+		}
+		// A mount may not report "slewing" until a moment after the command.
+		if sl, err := rig.Slewing(ctx); err == nil && !sl && time.Since(t0) > 1500*time.Millisecond {
+			break
+		}
+		if time.Since(t0) > 3*time.Minute {
+			abort()
+			return errors.New("the slew to the starting position didn't finish within 3 minutes")
+		}
+	}
+	s.step("Settling")
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(time.Duration(set.SettleS * float64(time.Second))):
+	}
+	if gotRA, gotDec, err := rig.Position(ctx); err == nil {
+		d := math.Hypot(raDistDeg(gotRA, ra)*math.Cos(dec*astro.Deg), gotDec-dec)
+		if d > 1 {
+			s.warn("The mount stopped %.1f° from the starting position (RA %.3f h, Dec %+.2f°)", d, gotRA, gotDec)
+		} else {
+			s.info("At the starting position (RA %.3f h, Dec %+.2f°)", gotRA, gotDec)
+		}
+	}
+	return nil
 }
 
 func (s *Session) offset(ctx context.Context, rig Rig, sol solver.Solution) *hint {

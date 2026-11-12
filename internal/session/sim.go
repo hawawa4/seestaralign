@@ -27,6 +27,7 @@ type simRig struct {
 	ha, dec  float64   // mount angles, rad
 	tracking bool
 	rate     float64 // current MoveAxis rate, deg/s
+	slewEnd  time.Time // a SlewTo "finishes" at this time
 	last     time.Time
 	azCum    float64
 	model    models.Model
@@ -119,7 +120,27 @@ func (r *simRig) MoveAxis(ctx context.Context, rate float64) error {
 func (r *simRig) Slewing(ctx context.Context) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.rate != 0, nil
+	return r.rate != 0 || time.Now().Before(r.slewEnd), nil
+}
+
+// SlewTo jumps the mount to the given mount-frame (JNow) coordinates and
+// reports "slewing" for a moment, as a real mount would.
+func (r *simRig) SlewTo(ctx context.Context, raHours, decDeg float64) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	now := time.Now()
+	r.advance(now)
+	r.ha = math.Mod(astro.LST(astro.JulianDate(now), r.lon)-raHours*15*astro.Deg+4*math.Pi, 2*math.Pi)
+	r.dec = decDeg * astro.Deg
+	r.slewEnd = now.Add(time.Second)
+	return nil
+}
+
+func (r *simRig) AbortSlew(ctx context.Context) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.slewEnd = time.Time{}
+	return nil
 }
 
 func (r *simRig) SetGain(context.Context, int) error { return nil }

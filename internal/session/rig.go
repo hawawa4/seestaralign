@@ -58,6 +58,8 @@ type Rig interface {
 	Position(ctx context.Context) (raHours, decDeg float64, err error)
 	SetTracking(ctx context.Context, on bool) error
 	MoveAxis(ctx context.Context, rateDegPerSec float64) error // primary (RA) axis; 0 stops
+	SlewTo(ctx context.Context, raHours, decDeg float64) error // starts the slew and returns; poll Slewing
+	AbortSlew(ctx context.Context) error
 	Slewing(ctx context.Context) (bool, error)
 	SetGain(ctx context.Context, gain int) error
 	SyncClock(ctx context.Context) error
@@ -237,6 +239,17 @@ func (r *alpacaRig) SetTracking(ctx context.Context, on bool) error {
 
 func (r *alpacaRig) MoveAxis(ctx context.Context, rate float64) error {
 	_, err := r.c.Put(ctx, "telescope", r.tel, "moveaxis", url.Values{"Axis": {"0"}, "Rate": {alpaca.FormFloat(rate)}})
+	return err
+}
+
+func (r *alpacaRig) SlewTo(ctx context.Context, raHours, decDeg float64) error {
+	_, err := r.c.Put(ctx, "telescope", r.tel, "slewtocoordinatesasync",
+		url.Values{"RightAscension": {alpaca.FormFloat(raHours)}, "Declination": {alpaca.FormFloat(decDeg)}})
+	return err
+}
+
+func (r *alpacaRig) AbortSlew(ctx context.Context) error {
+	_, err := r.c.Put(ctx, "telescope", r.tel, "abortslew", nil)
 	return err
 }
 

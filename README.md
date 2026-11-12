@@ -40,13 +40,13 @@ cgo, so the result is a single static binary.
 ```sh
 git clone https://github.com/hawawa4/seestaralign.git
 cd seestaralign
-make build                 # -> bin/seestaralign (for the machine you're on)
-make linux-amd64           # -> bin/seestaralign-linux-amd64
-make linux-arm64           # -> bin/seestaralign-linux-arm64 (Raspberry Pi, 64-bit OS)
-make test                  # go vet + all tests; no hardware or ASTAP needed
+just build                 # -> bin/seestaralign (for the machine you're on)
+just linux-amd64           # -> bin/seestaralign-linux-amd64
+just linux-arm64           # -> bin/seestaralign-linux-arm64 (Raspberry Pi, 64-bit OS)
+just test                  # go vet + all tests; no hardware or ASTAP needed
 ```
 
-Without `make`:
+Without [`just`](https://github.com/casey/just):
 
 ```sh
 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/seestaralign ./cmd/seestaralign
@@ -55,7 +55,7 @@ CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/seestaralign ./cmd/sees
 ## Run locally
 
 ```sh
-make run                   # builds, then serves http://127.0.0.1:8080
+just run                   # builds, then serves http://127.0.0.1:8080
 # or
 bin/seestaralign -listen :8080        # reachable from other devices on the LAN
 ```
@@ -85,7 +85,7 @@ Flags:
 ### As a systemd service (Debian/Ubuntu, LXC, Raspberry Pi)
 
 ```sh
-make linux-amd64                       # or linux-arm64; on your build machine
+just linux-amd64                       # or linux-arm64; on your build machine
 scp bin/seestaralign-linux-amd64 root@host:/usr/local/bin/seestaralign
 scp deploy/seestaralign.service root@host:/etc/systemd/system/
 # install astap_cli + a star database on the host as described above, then:
@@ -187,7 +187,11 @@ The star database is chosen at build time with `--build-arg ASTAP_DB=...`:
    the sensor size alone, so check the model shown and override it if needed. If a solve
    only matches another model's scale, the app switches models automatically.
 2. Point the scope **near the meridian, 30–60° up, away from the pole and the zenith**,
-   with room for 40° of RA travel in the move direction (east by default).
+   with room for 40° of RA travel in the move direction (east by default). Or let the
+   app do it: in Settings, tick *Slew to a starting position first* and enter the
+   position as Alt/Az or RA/Dec. It's saved with the other settings, and from then on
+   every run begins by slewing there (alt/az is converted to RA/Dec for the slew; RA/Dec
+   is in the frame the mount reports, JNow).
 3. Press **Start**. It takes three frames with two 20° moves between them, and then
    shows the error.
 4. Turn the knobs following the arrows. The arrows assume you are standing behind the
@@ -234,9 +238,10 @@ plate-solve noise:
 ## Development
 
 ```sh
-make test      # unit, simulator, fake Alpaca server and fake ASTAP tests
-make run       # http://127.0.0.1:8080, tick "Simulator" to play
-make reference # regenerate astropy reference values (needs uv)
+just test      # unit, simulator, fake Alpaca server and fake ASTAP tests
+just dev       # go run on http://127.0.0.1:8080 with state in .dev/, tick "Simulator" to play
+just run       # build, then run the release binary
+just reference # regenerate astropy reference values (needs uv)
 ```
 
 Layout:
@@ -254,6 +259,9 @@ confirmed yet:
 
 - Whether `MoveAxis(0, rate)` turns the RA axis in EQ mode. NINA's TPPA relies on the
   same call, and the Dec-change check stops the run if it doesn't.
+- Whether the Seestar accepts `SlewToCoordinatesAsync` (used for the starting position)
+  in EQ mode. If the slew fails, the run stops with the error. Untick the option to
+  carry on with manual pointing.
 - Whether the camera supports binary `ImageBytes`. If not, the app falls back to JSON,
   which is slower.
 - How the Pro models name their wide-angle camera. Devices named "wide" or "guide" are

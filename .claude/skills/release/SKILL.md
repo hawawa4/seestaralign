@@ -29,7 +29,7 @@ and publishes `ghcr.io/hawawa4/seestaralign` as `:X.Y.Z`, `:X.Y`, `:X` and
    - Push `main` first if it is ahead of `origin/main`, so the tag points at a
      commit that exists on the remote.
 
-3. **Test.** Run `make test` (takes ~30 s). Do not tag if it fails.
+3. **Test.** Run `just test` (takes ~30 s). Do not tag if it fails.
 
 4. **Tag and push.**
    ```sh

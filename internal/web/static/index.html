@@ -203,6 +203,12 @@ details[open] > summary::after { content: "▾"; }
         <div><label>Direction</label><select data-set="direction"><option value="east">East</option><option value="west">West</option></select></div>
         <div><label>Settle (s)</label><input data-set="settle_s" data-type="num" inputmode="decimal"></div>
         <div><label>Search radius (°)</label><input data-set="search_radius_deg" data-type="num" inputmode="decimal"></div>
+        <div class="full"><label class="chk"><input type="checkbox" data-set="start_enabled"> Slew to a starting position first</label><div class="hint">The first step of every run. Saved for future runs. Pick somewhere near the meridian, 30–60° up, away from the pole and the zenith.</div></div>
+        <div class="full"><label>Starting position as</label><select data-set="start_mode" id="startMode"><option value="altaz">Alt / Az</option><option value="radec">RA / Dec</option></select></div>
+        <div data-start="altaz"><label>Start altitude (°)</label><input data-set="start_alt_deg" data-type="num" inputmode="decimal"></div>
+        <div data-start="altaz"><label>Start azimuth (°)</label><input data-set="start_az_deg" data-type="num" inputmode="decimal"><div class="hint">0 = north, 90 = east</div></div>
+        <div data-start="radec"><label>Start RA (hours)</label><input data-set="start_ra_hours" data-type="num" inputmode="decimal"></div>
+        <div data-start="radec"><label>Start Dec (°)</label><input data-set="start_dec_deg" data-type="num" inputmode="decimal"><div class="hint">In the frame the mount reports (JNow)</div></div>
         <div><label>Latitude override</label><input data-set="lat" data-type="numnull" inputmode="decimal" placeholder="from mount"></div>
         <div><label>Longitude override</label><input data-set="lon" data-type="numnull" inputmode="decimal" placeholder="from mount"></div>
         <div class="full"><label class="chk"><input type="checkbox" data-set="refraction"> Correct for refraction (align to the apparent pole)</label></div>
@@ -302,6 +308,10 @@ document.querySelectorAll("[data-set]").forEach((el) => {
   const ev = el.type === "checkbox" || el.tagName === "SELECT" ? "change" : "input";
   el.addEventListener(ev, () => queueSave(el.dataset.set, readField(el)));
 });
+function showStartMode(mode) {
+  document.querySelectorAll("[data-start]").forEach((d) => { d.hidden = d.dataset.start !== mode; });
+}
+$("startMode").addEventListener("change", (e) => showStartMode(e.target.value));
 function fillSettings(set) {
   document.querySelectorAll("[data-set]").forEach((el) => {
     if (document.activeElement === el || el.dataset.set in pending) return;
@@ -352,6 +362,7 @@ function render(st) {
   $("phase").textContent = PHASES[ph] || ph;
   $("phase").classList.toggle("live", ph === "measuring" || ph === "adjusting");
   fillSettings(st.settings);
+  if (!(("start_mode" in pending))) showStartMode(st.settings.start_mode);
 
   // connection card
   const connected = ph !== "disconnected" && ph !== "connecting";

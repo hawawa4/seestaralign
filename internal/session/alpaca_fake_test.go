@@ -96,6 +96,15 @@ func (f *fakeSeestar) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		_ = f.rig.MoveAxis(ctx, rate)
 		ok()
+	case "api/v1/telescope/0/slewtocoordinatesasync":
+		var ra, dec float64
+		fmt.Sscan(r.Form.Get("RightAscension"), &ra)
+		fmt.Sscan(r.Form.Get("Declination"), &dec)
+		_ = f.rig.SlewTo(ctx, ra, dec)
+		ok()
+	case "api/v1/telescope/0/abortslew":
+		_ = f.rig.AbortSlew(ctx)
+		ok()
 	case "api/v1/telescope/0/slewing":
 		s, _ := f.rig.Slewing(ctx)
 		val(s)
@@ -163,7 +172,7 @@ func TestAlpacaPathEndToEnd(t *testing.T) {
 	patch, _ := json.Marshal(map[string]any{"host": host, "astap_path": astap,
 		"exposure_s": 0.1, "move_rate": 10, "settle_s": 0,
 		// the fake solves are unrefracted sky coordinates, so keep refraction out
-		"refraction": false})
+		"refraction": false, "start_enabled": true, "start_mode": "radec", "start_ra_hours": 3.5, "start_dec_deg": 40})
 	if err := s.UpdateSettings(patch); err != nil {
 		t.Fatal(err)
 	}
@@ -207,11 +216,17 @@ func TestAlpacaPathEndToEnd(t *testing.T) {
 	if fake.rig.rate != 0 {
 		t.Error("mount left moving")
 	}
-	var moves int
+	var moves, slews int
 	for _, c := range fake.calls {
+		if strings.HasSuffix(c, "/slewtocoordinatesasync") {
+			slews++
+		}
 		if strings.HasSuffix(c, "/moveaxis") {
 			moves++
 		}
+	}
+	if slews != 1 {
+		t.Errorf("expected one slew to the starting position, got %d", slews)
 	}
 	if moves < 4 { // 2 x (start, stop) at least
 		t.Errorf("expected >= 4 moveaxis calls, got %d", moves)

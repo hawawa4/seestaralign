@@ -112,3 +112,58 @@ func TestRADist(t *testing.T) {
 		t.Error(d)
 	}
 }
+
+func TestStartPositionSlew(t *testing.T) {
+	dir := t.TempDir()
+	s := New(filepath.Join(dir, "settings.json"), dir)
+	patch, _ := json.Marshal(map[string]any{
+		"simulate": true, "exposure_s": 0.1, "move_rate": 10, "settle_s": 0,
+		"start_enabled": true, "start_mode": "altaz", "start_alt_deg": 35, "start_az_deg": 110,
+	})
+	if err := s.UpdateSettings(patch); err != nil {
+		t.Fatal(err)
+	}
+	// saved for future runs
+	s2 := New(filepath.Join(dir, "settings.json"), dir)
+	if got := s2.settings(); !got.StartEnabled || got.StartAltDeg != 35 || got.StartAzDeg != 110 {
+		t.Fatalf("start position not persisted: %+v", got)
+	}
+	if err := s.Connect(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer s.Stop()
+	st := waitFor(t, s, 30*time.Second, func(st *State) bool { return len(st.Points) >= 1 || len(st.Warnings) > 0 })
+	if len(st.Warnings) > 0 {
+		t.Fatalf("warnings: %v", st.Warnings)
+	}
+	// The simulated mount has a ~1.5° polar error, so the true pointing lands
+	// within a few degrees of the requested alt/az, not exactly on it.
+	p := st.Points[0]
+	if math.Abs(p.AltDeg-35) > 4 || math.Abs(p.AzDeg-110) > 6 {
+		t.Errorf("first point alt %.1f az %.1f, want about 35 / 110", p.AltDeg, p.AzDeg)
+	}
+}
+
+func TestStartPositionValidation(t *testing.T) {
+	s := New("", t.TempDir())
+	for _, bad := range []string{`{"start_mode":"x"}`, `{"start_alt_deg":91}`, `{"start_az_deg":360}`, `{"start_ra_hours":24}`, `{"start_dec_deg":-91}`} {
+		if err := s.UpdateSettings([]byte(bad)); err == nil {
+			t.Errorf("%s accepted", bad)
+		}
+	}
+}
+
+func TestStartTargetRoundTrip(t *testing.T) {
+	now := time.Date(2026, 11, 12, 22, 0, 0, 0, time.UTC)
+	site := Site{Lat: 48.1, Lon: 11.6}
+	set := Settings{StartMode: "altaz", StartAltDeg: 40, StartAzDeg: 200}
+	ra, dec, _ := startTarget(set, site, now)
+	v := astro.RADecNowToHorizon(ra*15*astro.Deg, dec*astro.Deg, astro.JulianDate(now), site.Lat, site.Lon)
+	alt, az := astro.VecToAltAz(v)
+	if math.Abs(alt/astro.Deg-40) > 1e-6 || math.Abs(az/astro.Deg-200) > 1e-6 {
+		t.Errorf("round trip alt %.6f az %.6f", alt/astro.Deg, az/astro.Deg)
+	}
+}
